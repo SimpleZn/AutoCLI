@@ -1,5 +1,5 @@
 use opencli_rs_core::{CliCommand, CliError, IPage};
-use opencli_rs_pipeline::{execute_pipeline, steps::register_fetch_steps, steps::register_transform_steps, StepRegistry};
+use opencli_rs_pipeline::{execute_pipeline, steps::register_all_steps, StepRegistry};
 use opencli_rs_browser::BrowserBridge;
 use serde_json::Value;
 use std::sync::Arc;
@@ -52,8 +52,7 @@ async fn execute_command_inner(
 ) -> Result<Value, CliError> {
     // Build step registry
     let mut registry = StepRegistry::new();
-    register_fetch_steps(&mut registry);
-    register_transform_steps(&mut registry);
+    register_all_steps(&mut registry);
 
     if cmd.needs_browser() {
         // Browser session
