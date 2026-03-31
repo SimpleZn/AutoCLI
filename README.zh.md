@@ -2,8 +2,17 @@
 
 **[English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md)**
 
-极速、安全的命令行工具 —— **一行命令快速获取任意网站信息**。覆盖 Bilibili、知乎、小红书、Twitter/X、Reddit、YouTube、HackerNews 等 [55+ 站点](#内置命令)，同时支持控制 Electron 桌面应用、集成本地 CLI 工具（`gh`、`docker`、`kubectl`），通过浏览器会话复用和 AI 原生发现能力驱动。
+<p align="center">
+  <img src="title_screen.png" alt="opencli-rs" width="800" />
+</p>
 
+<p align="center">
+  <a href="https://autocli.ai"><b>https://autocli.ai</b></a> — AI 驱动的配置市场 & 云端 API
+</p>
+
+---
+
+极速、安全的命令行工具 —— **一行命令快速获取任意网站信息**。覆盖 Bilibili、知乎、小红书、Twitter/X、Reddit、YouTube、HackerNews 等 [55+ 站点](#内置命令)，同时支持控制 Electron 桌面应用、集成本地 CLI 工具（`gh`、`docker`、`kubectl`），通过浏览器会话复用和 AI 原生发现能力驱动。
 
 基于 [OpenCLI](https://github.com/jackwener/opencli)（TypeScript）用 **纯 Rust 完整重写**。功能对等，**最高快 12 倍**，**内存省 10 倍**，**单文件 4.7MB**，零运行时依赖。
 
@@ -39,6 +48,7 @@
 - **浏览器会话复用** —— 通过 Chrome 扩展复用已登录状态，无需管理 token
 - **声明式 YAML Pipeline** —— 用 YAML 描述数据抓取流程，零代码新增适配器
 - **AI 原生发现** —— `explore` 分析网站 API、`generate` 一键生成适配器、`cascade` 探测认证策略
+- **AI 智能生成** —— `generate --ai` 使用大模型分析任意网站，自动生成适配器，通过 [autocli.ai](https://autocli.ai) 云端共享
 - **下载媒体和文章** —— 视频下载（yt-dlp）、文章导出为 Markdown 并本地化配图
 - **外部 CLI 透传** —— 集成 GitHub CLI、Docker、Kubernetes 等工具
 - **多格式输出** —— table、JSON、YAML、CSV、Markdown
@@ -140,6 +150,49 @@ opencli-rs completion zsh >> ~/.zshrc
 opencli-rs completion fish > ~/.config/fish/completions/opencli-rs.fish
 ```
 
+## AI 命令
+
+> **由 [autocli.ai](https://autocli.ai) 提供支持** —— 获取 API Token，与社区共享适配器，让 AI 为任意网站生成适配器。
+
+### 第一步：认证
+
+```bash
+opencli-rs auth
+```
+
+执行后会：
+1. 自动打开浏览器到 [https://autocli.ai/get-token](https://autocli.ai/get-token)
+2. 提示你输入 Token
+3. 与服务器验证 Token 合法性
+4. 保存到 `~/.opencli-rs/config.json`
+
+### 第二步：AI 生成适配器
+
+```bash
+# AI 分析页面并生成适配器
+opencli-rs generate https://www.example.com --goal hot --ai
+
+# 搜索商品
+opencli-rs generate https://www.amazon.com/s?k=rust --goal search --ai
+```
+
+**工作流程：**
+1. 从 [autocli.ai](https://autocli.ai) 搜索是否有匹配的已有适配器
+2. 如果找到，显示交互式列表供选择：
+   ```
+   ? 找到以下已有配置，请选择:
+   > [exact]   example hot (by alice) - 获取热门帖子
+     [domain]  example search (by bob) - 搜索文章
+     🔄 重新生成 (使用 AI 分析)
+   ```
+3. 如果没有匹配或选择"重新生成"，AI 分析页面（DOM 结构 + API 请求）并生成新的 YAML 适配器
+4. 生成的适配器保存到本地，并上传到 [autocli.ai](https://autocli.ai) 与社区共享
+
+### 环境变量
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `AUTOCLI_API_BASE` | 覆盖服务器地址 | `https://www.autocli.ai` |
 
 ## 内置命令
 
@@ -209,14 +262,15 @@ opencli-rs completion fish > ~/.config/fish/completions/opencli-rs.fish
 
 ## AI 发现能力
 
-一行命令发现 API、自动生成适配器、立即可用：
+两种方式自动生成适配器：
 
 ```bash
-# 一键：探索 + 合成 + 保存适配器
+# 🤖 AI 驱动（推荐）：大模型分析页面并生成适配器
+opencli-rs generate https://www.example.com --goal hot --ai
+# 优先从 autocli.ai 搜索已有适配器，未找到则使用 AI 生成
+
+# 🔧 规则驱动：无需 AI 的启发式分析
 opencli-rs generate https://www.example.com --goal hot
-# ✅ 已生成适配器: example hot
-#    保存到: ~/.opencli-rs/adapters/example/hot.yaml
-#    立即运行: opencli-rs example hot
 
 # 探索网站 API（端点、框架、Store）
 opencli-rs explore https://www.example.com --site mysite
