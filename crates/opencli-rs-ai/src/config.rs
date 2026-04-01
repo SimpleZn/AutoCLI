@@ -38,6 +38,18 @@ pub fn command_config_url(command_uuid: &str) -> String {
     format!("{}/api/sites/commands/{}/config", api_base(), command_uuid)
 }
 
+/// Build User-Agent string: opencli-rs/{version} ({os}; {arch}; {lang})
+pub fn user_agent() -> String {
+    let version = env!("CARGO_PKG_VERSION");
+    let os = if cfg!(target_os = "macos") { "macOS" }
+        else if cfg!(target_os = "windows") { "Windows" }
+        else if cfg!(target_os = "linux") { "Linux" }
+        else { "Unknown" };
+    let arch = std::env::consts::ARCH;
+    let lang = if std::env::var("LANG").unwrap_or_default().to_lowercase().starts_with("zh") { "zh" } else { "en" };
+    format!("opencli-rs/{} ({}; {}; {})", version, os, arch, lang)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LlmConfig {
     /// API endpoint URL (e.g., "https://api.anthropic.com/v1/messages", "https://api.openai.com/v1/chat/completions")

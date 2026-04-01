@@ -56,6 +56,7 @@ pub async fn generate_with_llm(
         .post(&endpoint)
         .header("Authorization", format!("Bearer {}", token))
         .header("Content-Type", "application/json")
+        .header("User-Agent", crate::config::user_agent())
         .json(&request_body)
         .send()
         .await

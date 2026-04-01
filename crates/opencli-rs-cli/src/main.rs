@@ -187,6 +187,7 @@ async fn search_existing_adapters(url: &str, token: &str) -> Result<Vec<AdapterM
     let resp = client
         .get(&search_url)
         .header("Authorization", format!("Bearer {}", token))
+        .header("User-Agent", opencli_rs_ai::user_agent())
         .send()
         .await
         .map_err(|_| t("❌ 服务器连接失败，请稍后再试", "❌ Server connection failed, please try again later").to_string())?;
@@ -234,6 +235,7 @@ async fn fetch_adapter_config(command_uuid: &str, token: &str) -> Result<String,
     let resp = client
         .get(&url)
         .header("Authorization", format!("Bearer {}", token))
+        .header("User-Agent", opencli_rs_ai::user_agent())
         .send()
         .await
         .map_err(|_| t("❌ 服务器连接失败，请稍后再试", "❌ Server connection failed, please try again later").to_string())?;
@@ -278,6 +280,7 @@ async fn upload_adapter(yaml: &str) {
         .post(&api_url)
         .header("Authorization", format!("Bearer {}", token))
         .header("Content-Type", "application/json")
+        .header("User-Agent", opencli_rs_ai::user_agent())
         .json(&body)
         .send()
         .await
@@ -531,6 +534,7 @@ async fn main() {
                     let resp = client
                         .post(verify_url)
                         .header("Content-Type", "application/json")
+                        .header("User-Agent", opencli_rs_ai::user_agent())
                         .json(&serde_json::json!({ "token": &token }))
                         .send()
                         .await;
