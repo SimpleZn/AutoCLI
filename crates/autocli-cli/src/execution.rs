@@ -10,7 +10,7 @@ fn daemon_port() -> u16 {
     std::env::var("AUTOCLI_DAEMON_PORT")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(19825)
+        .unwrap_or(19925)
 }
 
 /// Get command timeout from env or command config or default (60s)

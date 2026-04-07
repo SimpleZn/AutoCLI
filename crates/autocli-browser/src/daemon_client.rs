@@ -147,8 +147,8 @@ mod tests {
 
     #[test]
     fn test_daemon_client_construction() {
-        let client = DaemonClient::new(19825);
-        assert_eq!(client.base_url, "http://127.0.0.1:19825");
+        let client = DaemonClient::new(19925);
+        assert_eq!(client.base_url, "http://127.0.0.1:19925");
     }
 
     #[tokio::test]

@@ -423,7 +423,7 @@ async fn main() {
         let port: u16 = std::env::var("AUTOCLI_DAEMON_PORT")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(19825);
+            .unwrap_or(19925);
         tracing::info!(port = port, "Starting daemon server");
         match autocli_browser::Daemon::start(port).await {
             Ok(daemon) => {
@@ -445,7 +445,7 @@ async fn main() {
         let port: u16 = std::env::var("AUTOCLI_DAEMON_PORT")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(19825);
+            .unwrap_or(19925);
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(1))
             .build()
@@ -710,7 +710,7 @@ async fn main() {
 
                 let mut bridge = autocli_browser::BrowserBridge::new(
                     std::env::var("AUTOCLI_DAEMON_PORT").ok()
-                        .and_then(|s| s.parse().ok()).unwrap_or(19825),
+                        .and_then(|s| s.parse().ok()).unwrap_or(19925),
                 );
                 match bridge.connect().await {
                     Ok(page) => {
@@ -743,7 +743,7 @@ async fn main() {
 
                 let mut bridge = autocli_browser::BrowserBridge::new(
                     std::env::var("AUTOCLI_DAEMON_PORT").ok()
-                        .and_then(|s| s.parse().ok()).unwrap_or(19825),
+                        .and_then(|s| s.parse().ok()).unwrap_or(19925),
                 );
                 match bridge.connect().await {
                     Ok(page) => {
@@ -769,7 +769,7 @@ async fn main() {
 
                 let mut bridge = autocli_browser::BrowserBridge::new(
                     std::env::var("AUTOCLI_DAEMON_PORT").ok()
-                        .and_then(|s| s.parse().ok()).unwrap_or(19825),
+                        .and_then(|s| s.parse().ok()).unwrap_or(19925),
                 );
                 match bridge.connect().await {
                     Ok(page) => {

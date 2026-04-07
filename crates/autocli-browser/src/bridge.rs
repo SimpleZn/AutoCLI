@@ -6,7 +6,7 @@ use tracing::{debug, info, warn};
 use crate::daemon_client::DaemonClient;
 use crate::page::DaemonPage;
 
-const DEFAULT_PORT: u16 = 19825;
+const DEFAULT_PORT: u16 = 19925;
 const READY_TIMEOUT: Duration = Duration::from_secs(10);
 const READY_POLL_INTERVAL: Duration = Duration::from_millis(200);
 const EXTENSION_INITIAL_WAIT: Duration = Duration::from_secs(5);
@@ -230,8 +230,8 @@ mod tests {
 
     #[test]
     fn test_bridge_construction() {
-        let bridge = BrowserBridge::new(19825);
-        assert_eq!(bridge.port, 19825);
+        let bridge = BrowserBridge::new(19925);
+        assert_eq!(bridge.port, 19925);
     }
 
     #[test]

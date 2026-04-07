@@ -29,7 +29,7 @@ pub async fn run_doctor() {
         std::env::var("AUTOCLI_DAEMON_PORT")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(19825),
+            .unwrap_or(19925),
     );
     let daemon_running = client.is_running().await;
     print_check("Daemon running", daemon_running);

@@ -75,7 +75,9 @@
       .logo {
         font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:700;
         color:#0f1112; letter-spacing:-0.04em; display:flex; align-items:baseline; gap:1px;
+        text-decoration:none; cursor:pointer;
       }
+      .logo:hover { opacity:0.7; }
       .logo-mark {
         display:inline-flex; align-items:center; justify-content:center;
         width:10px; height:12px; background:#0f1112; flex-shrink:0; align-self:center;
@@ -198,22 +200,62 @@
       }
 
       /* Generate */
+      @keyframes gen-pulse {
+        0%, 100% { opacity:1; }
+        50% { opacity:0.6; }
+      }
+      @keyframes gen-slide {
+        0% { background-position:200% 0; }
+        100% { background-position:-200% 0; }
+      }
       .btn-generate {
         width:100%; padding:8px; margin-top:10px;
         background:#ff571a; color:#fff; border:1px solid #ff571a;
         font-size:12px; font-weight:600; cursor:pointer;
         font-family:'Satoshi',sans-serif; letter-spacing:0.3px;
+        position:relative; overflow:hidden;
       }
       .btn-generate:hover { opacity:0.88; }
-      .btn-generate:disabled { opacity:0.4; cursor:not-allowed; }
-      .btn-generate.loading { background:#5d5f5f; border-color:#5d5f5f; }
-      .generate-result {
-        background:#0f1112; color:#e0e0e0; font:11px/1.5 'JetBrains Mono',monospace;
-        padding:10px; margin-top:8px; max-height:300px; overflow-y:auto;
-        white-space:pre-wrap; word-break:break-all;
-        border:1px solid #333;
+      .btn-generate:disabled { cursor:not-allowed; }
+      .btn-generate.loading {
+        background:linear-gradient(90deg, #5d5f5f 0%, #888 50%, #5d5f5f 100%);
+        background-size:200% 100%;
+        animation:gen-slide 1.5s ease infinite;
+        border-color:#5d5f5f;
       }
-      .generate-result.streaming { border-color:#ff571a; }
+      .generate-stream {
+        background:#0f1112; color:#5d5f5f; font:10px/1.4 'JetBrains Mono',monospace;
+        padding:6px 8px; margin-top:8px; height:56px; overflow:hidden;
+        white-space:pre; border:1px solid #333; position:relative;
+      }
+      .generate-stream.active { border-color:#ff571a; color:#aaabab; animation:gen-pulse 2s ease infinite; }
+      .generate-stream::after {
+        content:''; position:absolute; bottom:0; left:0; right:0; height:16px;
+        background:linear-gradient(transparent, #0f1112);
+      }
+      .generate-summary {
+        margin-top:8px; border:1px solid #e2e2e2; background:#fff; padding:10px 12px;
+      }
+      .summary-row { display:flex; gap:6px; margin-bottom:4px; font-size:11px; }
+      .summary-label { color:#aaabab; min-width:60px; font-family:'JetBrains Mono',monospace; }
+      .summary-value { color:#0f1112; font-weight:500; }
+      .summary-usage {
+        font-size:10px; font-weight:600; text-transform:uppercase; color:#888;
+        margin-top:10px; margin-bottom:4px; letter-spacing:0.5px;
+      }
+      .summary-cmd {
+        display:flex; align-items:center;
+        background:#0f1112; color:#e0e0e0; padding:8px 10px;
+        font:12px/1.4 'JetBrains Mono',monospace; cursor:pointer;
+      }
+      .summary-cmd:hover { background:#1a1c1e; }
+      .summary-cmd-text { flex:1; }
+      .summary-cmd-copy {
+        flex-shrink:0; color:#5d5f5f; font-size:10px;
+        padding:2px 6px; border:1px solid #333;
+        font-family:'JetBrains Mono',monospace;
+      }
+      .summary-cmd-copy:hover { color:#fff; border-color:#5d5f5f; }
       .generate-error { color:#ff571a; font-size:11px; margin-top:6px; }
 
       /* Toast */
@@ -227,7 +269,7 @@
 
     <div class="panel">
       <div class="header">
-        <span class="logo"><span class="logo-mark"></span>Auto<span class="logo-cli">CLI</span><span class="logo-s">.ai</span></span>
+        <a class="logo" id="s-logo" href="#" title="Open autocli.ai"><span class="logo-mark"></span>Auto<span class="logo-cli">CLI</span><span class="logo-s">.ai</span></a>
         <span class="header-sep">/</span>
         <span class="header-sub">Selector</span>
         <button class="icon-btn" id="s-close" title="Close">✕</button>
@@ -240,17 +282,11 @@
         <div id="s-entries">
           <div class="empty" id="s-empty">No entries yet</div>
         </div>
-        <div class="section" id="s-sec-export" style="display:none;">
-          <div class="sec-title">Export</div>
-          <div class="export-bar">
-            <button class="btn btn-sm" id="s-json">JSON</button>
-            <button class="btn btn-sm" id="s-yaml">YAML</button>
-          </div>
-          <div class="export-area" id="s-export"></div>
-        </div>
+        <div id="s-sec-export" style="display:none;"></div>
         <div class="section" id="s-sec-generate" style="display:none;">
           <button class="btn-generate" id="s-generate">Generate Adapter with AI</button>
-          <div class="generate-result" id="s-gen-result" style="display:none;"></div>
+          <div class="generate-stream" id="s-gen-stream" style="display:none;"></div>
+          <div class="generate-summary" id="s-gen-summary" style="display:none;"></div>
           <div class="generate-error" id="s-gen-error" style="display:none;"></div>
         </div>
         <div class="help"><b>ESC</b> stop picking · click selector to copy</div>
@@ -265,12 +301,11 @@
   const emptyEl = q('s-empty');
   const toastEl = q('s-toast');
   const exportSection = q('s-sec-export');
-  const exportEl = q('s-export');
   const genSection = q('s-sec-generate');
   const genBtn = q('s-generate');
-  const genResult = q('s-gen-result');
+  const genStream = q('s-gen-stream');
+  const genSummary = q('s-gen-summary');
   const genError = q('s-gen-error');
-  console.log('[autocli-selector] genBtn:', genBtn, 'genResult:', genResult, 'genSection:', genSection);
 
   function setStatus(h, t) { statusEl.innerHTML = h; statusEl.className = 'status'+(t?' '+t:''); }
   function showToast(t) { toastEl.textContent=t||'copied'; toastEl.style.display='block'; setTimeout(()=>toastEl.style.display='none',1000); }
@@ -548,9 +583,8 @@
       entries: saved.map(e=>({ name:e.name, selector:e.selector, matchCount:e.matchCount, saved:e.saved, sample:e.sample||'' })),
     };
     window.__autocliSelectorExport = data;
-    exportSection.style.display = 'block';
+    exportSection.style.display = 'none';
     genSection.style.display = 'block';
-    exportEl.textContent = JSON.stringify(data, null, 2);
   }
 
   // ─── Panel buttons ────────────────────────────────────────────
@@ -562,60 +596,45 @@
 
   // Blocks button removed from UI
 
-  q('s-json').addEventListener('click', () => {
-    if (window.__autocliSelectorExport) {
-      copyText(JSON.stringify(window.__autocliSelectorExport, null, 2));
-    }
+  q('s-logo').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.open('https://www.autocli.ai', '_blank');
   });
 
-  q('s-yaml').addEventListener('click', () => {
-    const d = window.__autocliSelectorExport;
-    if (!d) return;
-    let y = `# AutoCLI Selector\n# ${d.url}\ntitle: "${d.title || ''}"\n\nentries:\n`;
-    d.entries.forEach(e => {
-      y += `  ${e.name}:\n    selector: "${e.selector}"\n    match_count: ${e.matchCount}\n`;
-    });
-    copyText(y);
-  });
+  // Export UI removed — data stored in window.__autocliSelectorExport for API calls
 
   // ─── Generate with AI ──────────────────────────────────────────
   genBtn.addEventListener('click', () => {
-    console.log('[autocli-selector] Generate button clicked');
     const exportData = window.__autocliSelectorExport;
-    if (!exportData) { console.log('[autocli-selector] No export data'); return; }
+    if (!exportData) return;
 
-    // Disable button, show loading
     genBtn.disabled = true;
     genBtn.textContent = 'Cleaning DOM...';
     genBtn.classList.add('loading');
-    genResult.style.display = 'block';
-    genResult.textContent = '';
-    genResult.classList.add('streaming');
+    genStream.style.display = 'block';
+    genStream.textContent = '';
+    genStream.classList.add('active');
+    genSummary.style.display = 'none';
     genError.style.display = 'none';
 
     (async () => {
     try {
       // Step 1: Clean DOM
-      console.log('[autocli-selector] Starting DOM clean...');
       let domTree = '';
       try {
         const DC = window.__autocliDomClean;
         if (DC) {
-          const jsCode = DC.fullCleanPipelineJs({ scrollPages: 2 });
-          domTree = await eval(jsCode);
-          console.log('[autocli-selector] DOM cleaned, length:', domTree.length);
+          domTree = await eval(DC.fullCleanPipelineJs({ scrollPages: 2 }));
         } else {
-          console.log('[autocli-selector] DomClean not available, using fallback');
           domTree = document.documentElement.outerHTML.substring(0, 30000);
         }
-      } catch(cleanErr) {
-        console.error('[autocli-selector] DOM clean error:', cleanErr);
+      } catch(e) {
         domTree = document.documentElement.outerHTML.substring(0, 30000);
       }
 
       genBtn.textContent = 'Generating...';
 
-      // Step 2: Build request body
+      // Step 2: Build request
       const capturedData = {
         url: exportData.url,
         title: exportData.title || document.title,
@@ -623,17 +642,11 @@
         dom_tree: domTree,
       };
 
-      // Step 3: Call daemon proxy (daemon adds token and forwards to autocli.ai)
-      const DAEMON_PORT = 19825;
+      const DAEMON_PORT = 19925;
       const resp = await fetch(`http://localhost:${DAEMON_PORT}/ai-generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          captured_data: capturedData,
-          stream: true,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ captured_data: capturedData, stream: true }),
       });
 
       if (!resp.ok) {
@@ -641,7 +654,7 @@
         throw new Error(`${resp.status}: ${errText.substring(0, 200)}`);
       }
 
-      // Step 4: Read SSE stream
+      // Step 3: Read SSE stream — show last 3 lines only
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -650,37 +663,84 @@
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
-
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           const data = line.slice(6).trim();
           if (data === '[DONE]') break;
-
           try {
             const parsed = JSON.parse(data);
             const delta = parsed.choices?.[0]?.delta?.content;
             if (delta) {
               fullContent += delta;
-              genResult.textContent = fullContent;
-              genResult.scrollTop = genResult.scrollHeight;
+              // Show only last 3 lines
+              const allLines = fullContent.split('\n');
+              genStream.textContent = allLines.slice(-4).join('\n');
             }
-          } catch(e) { /* skip unparseable chunks */ }
+          } catch(e) {}
         }
       }
 
-      genResult.classList.remove('streaming');
+      // Hide stream, show summary
+      genStream.classList.remove('active');
+      genStream.style.display = 'none';
+
       if (!fullContent) {
         genError.textContent = 'AI returned empty response';
         genError.style.display = 'block';
+        return;
       }
 
+      // Step 4: Parse YAML and show summary
+      const yaml = fullContent;
+      const getField = (name) => {
+        const match = yaml.match(new RegExp('^' + name + ':\\s*(.+)$', 'm'));
+        return match ? match[1].trim().replace(/^["']|["']$/g, '') : '';
+      };
+      const site = getField('site') || '?';
+      const cmdName = getField('name') || '?';
+      const description = getField('description') || '';
+      const domain = getField('domain') || '';
+
+      const colMatch = yaml.match(/^columns:\s*\[([^\]]+)\]/m);
+      const columns = colMatch ? colMatch[1].trim() : '';
+
+      const tagMatch = yaml.match(/^tags:\s*\[([^\]]+)\]/m);
+      const tags = tagMatch ? tagMatch[1].trim() : '';
+
+      const argNames = [];
+      const argSection = yaml.match(/^args:\n((?:  .+\n)*)/m);
+      if (argSection) {
+        const argMatches = argSection[1].matchAll(/^  (\w+):/gm);
+        for (const m of argMatches) argNames.push(m[1]);
+      }
+
+      const argHints = argNames.filter(a => a !== 'limit').map(a => `<${a}>`).join(' ');
+      const cmd = `autocli ${site} ${cmdName}${argHints ? ' ' + argHints : ''}`;
+
+      genSummary.style.display = 'block';
+      genSummary.innerHTML = `
+        <div class="summary-row"><span class="summary-label">site</span><span class="summary-value">${esc(site)}</span></div>
+        <div class="summary-row"><span class="summary-label">name</span><span class="summary-value">${esc(cmdName)}</span></div>
+        ${description ? `<div class="summary-row"><span class="summary-label">desc</span><span class="summary-value">${esc(description)}</span></div>` : ''}
+        ${domain ? `<div class="summary-row"><span class="summary-label">domain</span><span class="summary-value">${esc(domain)}</span></div>` : ''}
+        ${columns ? `<div class="summary-row"><span class="summary-label">columns</span><span class="summary-value">${esc(columns)}</span></div>` : ''}
+        ${tags ? `<div class="summary-row"><span class="summary-label">tags</span><span class="summary-value">${esc(tags)}</span></div>` : ''}
+        ${argNames.length ? `<div class="summary-row"><span class="summary-label">args</span><span class="summary-value">${esc(argNames.join(', '))}</span></div>` : ''}
+        <div class="summary-usage">Usage</div>
+        <div class="summary-cmd" title="Click to copy">
+          <span class="summary-cmd-text">${esc(cmd)}</span>
+          <span class="summary-cmd-copy">copy</span>
+        </div>
+      `;
+
+      genSummary.querySelector('.summary-cmd')?.addEventListener('click', () => copyText(cmd));
+
     } catch(e) {
-      console.error('[autocli-selector] Generate error:', e);
-      genResult.classList.remove('streaming');
+      genStream.classList.remove('active');
+      genStream.style.display = 'none';
       genError.textContent = e.message;
       genError.style.display = 'block';
     } finally {
