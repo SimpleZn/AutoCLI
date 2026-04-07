@@ -4,12 +4,21 @@
 **[English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md)**
 
 <p align="center">
-  <img src="title_screen.png" alt="autocli" width="800" />
+  <img src="assets/title_screen.jpg" alt="autocli" width="800" />
 </p>
 
 <p align="center">
   <a href="https://autocli.ai"><b>https://autocli.ai</b></a> — AI 驱动的配置市场 & 云端 API
 </p>
+
+---
+
+## 更新说明
+
+### v0.3.2
+- **Chrome 扩展选择器工具** — 只需选择你需要的核心数据，可视化精准选取页面元素，构建精确的 CSS 选择器定位目标内容
+- **基于 AutoCLI.ai 的 AI 生成** — 基于你选择的数据，AI 自动扩展并发现关联字段，生成完整的数据抓取规则
+- **本地 + 云端无缝同步** — 生成的适配器自动保存到本地并同步至 AutoCLI.ai，即刻可用
 
 ---
 
@@ -166,27 +175,17 @@ autocli auth
 3. 与服务器验证 Token 合法性
 4. 保存到 `~/.autocli/config.json`
 
-### 第二步：AI 生成适配器
+### 第二步：通过 Chrome 浏览器插件，精准选择特定网站上你需要的数据，点击生成按钮后，AI 会自动分析并生成页面，扩展相关数据并生成适配器：
 
-```bash
-# AI 分析页面并生成适配器
-autocli generate https://www.moltbook.com/ --goal 'list' --ai
+<p align="center">
+  <img src="assets/chrome_extension_demo.jpg" alt="autocli" width="800" />
+</p>
 
-# 搜索商品
-autocli generate https://www.amazon.com/ --goal 'search' --ai
-```
+生成完成后，就可以使用 autocli 使用新生成的指令检索需要的数据了。
 
-**工作流程：**
-1. 从 [autocli.ai](https://autocli.ai) 搜索是否有匹配的已有适配器
-2. 如果找到，显示交互式列表供选择：
-   ```
-   ? 找到以下已有配置，请选择:
-   > [exact]   example hot (by alice) - 获取热门帖子
-     [domain]  example search (by bob) - 搜索文章
-     🔄 重新生成 (使用 AI 分析)
-   ```
-3. 如果没有匹配或选择"重新生成"，AI 分析页面（DOM 结构 + API 请求）并生成新的 YAML 适配器
-4. 生成的适配器保存到本地，并上传到 [autocli.ai](https://autocli.ai) 与社区共享
+<p align="center">
+  <img src="assets/autocli_use.jpg" alt="autocli" width="800" />
+</p>
 
 ### 第三步：搜索已有适配器
 

@@ -4,12 +4,21 @@
 **[English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md)**
 
 <p align="center">
-  <img src="title_screen.png" alt="autocli" width="800" />
+  <img src="assets/title_screen.jpg" alt="autocli" width="800" />
 </p>
 
 <p align="center">
   <a href="https://autocli.ai"><b>https://autocli.ai</b></a> — AI-powered adapter marketplace & cloud API
 </p>
+
+---
+
+## What's New
+
+### v0.3.2
+- **Chrome Extension Selector Tool** — Just select the core data you need, visually pick elements from any page and build precise CSS selectors to target specific content
+- **AI-Powered Generation via AutoCLI.ai** — Based on your selected data, AI automatically expands and discovers related fields, generating complete scraping rules
+- **Seamless Local + Cloud Sync** — Generated adapters are saved locally and synced to AutoCLI.ai, ready to use immediately
 
 ---
 
@@ -166,27 +175,17 @@ This will:
 3. Verify the token with the server
 4. Save it to `~/.autocli/config.json`
 
-### Step 2: Generate Adapter with AI
+### Step 2: Use the Chrome Extension to precisely select the data you need from any website. Click the Generate button, and AI will automatically analyze the page, expand related data, and generate an adapter:
 
-```bash
-# AI analyzes the page and generates a working adapter
-autocli generate https://www.moltbook.com/ --goal 'list' --ai
+<p align="center">
+  <img src="assets/chrome_extension_demo.jpg" alt="autocli" width="800" />
+</p>
 
-# Search for products
-autocli generate https://www.amazon.com/ --goal 'search' --ai
-```
+Once generation is complete, you can use autocli with the newly generated command to retrieve the data you need.
 
-**How it works:**
-1. Searches [autocli.ai](https://autocli.ai) for existing adapters matching the URL
-2. If found, shows an interactive list for you to choose:
-   ```
-   ? Existing adapters found, please select:
-   > [exact]   example hot (by alice) - Get trending posts
-     [domain]  example search (by bob) - Search articles
-     🔄 Regenerate (using AI)
-   ```
-3. If no match or you choose "Regenerate", AI analyzes the page (DOM structure + API requests) and generates a new YAML adapter
-4. The generated adapter is saved locally and uploaded to [autocli.ai](https://autocli.ai) for the community
+<p align="center">
+  <img src="assets/autocli_use.jpg" alt="autocli" width="800" />
+</p>
 
 ### Step 3: Search Existing Adapters
 

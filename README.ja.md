@@ -4,12 +4,21 @@
 **[English](README.md) | [中文](README.zh.md) | [日本語](README.ja.md)**
 
 <p align="center">
-  <img src="title_screen.png" alt="autocli" width="800" />
+  <img src="assets/title_screen.jpg" alt="autocli" width="800" />
 </p>
 
 <p align="center">
   <a href="https://autocli.ai"><b>https://autocli.ai</b></a> — AI 駆動アダプターマーケットプレイス＆クラウド API
 </p>
+
+---
+
+## 更新履歴
+
+### v0.3.2
+- **Chrome 拡張セレクターツール** — 必要なコアデータを選ぶだけで、ページ要素をビジュアルに精確選択し、CSS セレクターで目的のコンテンツを正確にターゲット
+- **AutoCLI.ai による AI 生成** — 選択したデータを基に、AI が関連フィールドを自動拡張・発見し、完全なスクレイピングルールを生成
+- **ローカル + クラウド同期** — 生成されたアダプターは自動保存＆ AutoCLI.ai に同期、即座に利用可能
 
 ---
 
@@ -166,27 +175,17 @@ autocli auth
 3. サーバーでトークンを検証
 4. `~/.autocli/config.json` に保存
 
-### ステップ 2：AI でアダプターを生成
+### ステップ 2：Chrome 拡張で必要なデータを正確に選択し、生成ボタンをクリックすると、AI が自動的にページを分析し、関連データを拡張してアダプターを生成します：
 
-```bash
-# AI がページを分析し、動作するアダプターを生成
-autocli generate https://www.example.com --goal hot --ai
+<p align="center">
+  <img src="assets/chrome_extension_demo.jpg" alt="autocli" width="800" />
+</p>
 
-# 商品検索
-autocli generate https://www.amazon.com/s?k=rust --goal search --ai
-```
+生成が完了すると、autocli で新しく生成されたコマンドを使ってデータを取得できます。
 
-**仕組み：**
-1. [autocli.ai](https://autocli.ai) で URL に一致する既存のアダプターを検索
-2. 見つかった場合、インタラクティブリストで選択：
-   ```
-   ? Existing adapters found, please select:
-   > [exact]   example hot (by alice) - トレンド投稿を取得
-     [domain]  example search (by bob) - 記事を検索
-     🔄 Regenerate (using AI)
-   ```
-3. 一致なし、または「Regenerate」を選択した場合、AI がページ（DOM 構造 + API リクエスト）を分析し、新しい YAML アダプターを生成
-4. 生成されたアダプターはローカルに保存され、[autocli.ai](https://autocli.ai) にアップロードしてコミュニティと共有
+<p align="center">
+  <img src="assets/autocli_use.jpg" alt="autocli" width="800" />
+</p>
 
 ### ステップ 3：既存アダプターを検索
 
