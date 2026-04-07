@@ -65,7 +65,7 @@
     get columns() { return lang==='zh' ? '数据列' : 'Columns'; },
     get usage() { return lang==='zh' ? '使用方式' : 'Usage'; },
     get copy() { return lang==='zh' ? '复制' : 'copy'; },
-    get viewOn() { return lang==='zh' ? '在 autocli.ai 查看 →' : '${i.viewOn}'; },
+    get viewOn() { return lang==='zh' ? '在 autocli.ai 查看 →' : 'View on autocli.ai →'; },
     get synced() { return lang==='zh' ? '配置已同步保存到本地和云端，可直接使用' : 'Saved locally & synced to cloud. Ready to use.'; },
     get emptyResponse() { return lang==='zh' ? 'AI 返回了空内容' : i.emptyResponse; },
     get limitReached() { return lang==='zh' ? '已达到使用限制' : 'Limit Reached'; },
@@ -440,6 +440,32 @@
       <div class="toast" id="s-toast">copied</div>
     </div>
   `;
+
+  // ─── Daemon proxy (via background script) ──────────────────────
+  function daemonFetch(path, method, body) {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: 'daemon-fetch', path, method, body }, (resp) => {
+        if (chrome.runtime.lastError) {
+          resolve({ ok: false, status: 0, body: '', error: chrome.runtime.lastError.message });
+        } else {
+          resolve(resp || { ok: false, status: 0, body: '', error: 'No response' });
+        }
+      });
+    });
+  }
+
+  function daemonStream(path, body, onChunk, onDone, onError) {
+    const port = chrome.runtime.connect({ name: 'daemon-stream' });
+    port.postMessage({ path, body });
+    port.onMessage.addListener((msg) => {
+      if (msg.type === 'chunk') onChunk(msg.data);
+      else if (msg.type === 'done') { onDone(); try { port.disconnect(); } catch {} }
+      else if (msg.type === 'error') { onError(msg.status, msg.body); try { port.disconnect(); } catch {} }
+    });
+    port.onDisconnect.addListener(() => {
+      if (chrome.runtime.lastError) onError(0, chrome.runtime.lastError.message);
+    });
+  }
 
   const q = id => shadow.getElementById(id);
   const statusEl = q('s-status');
@@ -871,72 +897,84 @@
         dom_tree: domTree,
       };
 
-      const DAEMON_PORT = 19925;
-      const resp = await fetch(`http://localhost:${DAEMON_PORT}/ai-generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ captured_data: capturedData, stream: true }),
+      // Step 3: Stream via background proxy using EventSource-like polling
+      const fullContent = await new Promise((resolve, reject) => {
+        let content = '';
+
+        // Use background port for streaming
+        const port = chrome.runtime.connect({ name: 'daemon-stream' });
+        let sseBuffer = '';
+
+        port.postMessage({ path: '/ai-generate', body: { captured_data: capturedData, stream: true } });
+
+        port.onMessage.addListener((msg) => {
+          if (msg.type === 'chunk') {
+            sseBuffer += msg.data;
+            const lines = sseBuffer.split('\n');
+            sseBuffer = lines.pop() || '';
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data:')) continue;
+              const data = trimmed.slice(5).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta?.content;
+                if (delta) {
+                  content += delta;
+                  genStream.textContent = content.split('\n').slice(-4).join('\n');
+                }
+              } catch(e) {}
+            }
+          } else if (msg.type === 'done') {
+            if (sseBuffer.trim()) {
+              const lines = (sseBuffer + '\n').split('\n');
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || !trimmed.startsWith('data:')) continue;
+                const data = trimmed.slice(5).trim();
+                if (data === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta?.content;
+                  if (delta) content += delta;
+                } catch(e) {}
+              }
+            }
+            resolve(content);
+          } else if (msg.type === 'error') {
+            if (msg.status === 429) {
+              let errMsg = msg.body;
+              try { const p = JSON.parse(msg.body); errMsg = p.error?.message || p.detail || msg.body; } catch(e) {}
+              genStream.classList.remove('active');
+              genStream.style.display = 'none';
+              genRateLimit.style.display = 'block';
+              genRateLimit.innerHTML = `
+                <div class="gen-rl-header"><span class="gen-rl-bar"></span><span class="gen-rl-title">${i.limitReached}</span></div>
+                <div class="gen-rl-msg">${esc(errMsg)}</div>
+                <a class="gen-rl-link" href="https://www.autocli.ai" target="_blank">${i.learnMore}</a>
+              `;
+              resolve('');
+            } else {
+              reject(new Error(`${msg.status}: ${msg.body}`));
+            }
+          }
+        });
+
+        port.onDisconnect.addListener(() => {
+          if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+          else resolve(content);
+        });
       });
 
-      if (!resp.ok) {
-        const errText = await resp.text();
-        if (resp.status === 429) {
-          // Rate limit — show friendly card
-          let msg = errText;
-          try {
-            const parsed = JSON.parse(errText);
-            msg = parsed.error?.message || parsed.detail || errText;
-          } catch(e) {}
-          
-          genStream.classList.remove('active');
-          genStream.style.display = 'none';
-          genRateLimit.style.display = 'block';
-          genRateLimit.innerHTML = `
-            <div class="gen-rl-header"><span class="gen-rl-bar"></span><span class="gen-rl-title">${i.limitReached}</span></div>
-            <div class="gen-rl-msg">${esc(msg)}</div>
-            <a class="gen-rl-link" href="https://www.autocli.ai" target="_blank">${i.learnMore}</a>
-          `;
-          return;
-        }
-        throw new Error(`${resp.status}: ${errText}`);
-      }
-
-      // Step 3: Read SSE stream — show last 3 lines only
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let fullContent = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6).trim();
-          if (data === '[DONE]') break;
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              fullContent += delta;
-              // Show only last 3 lines
-              const allLines = fullContent.split('\n');
-              genStream.textContent = allLines.slice(-4).join('\n');
-            }
-          } catch(e) {}
-        }
-      }
-
-      // Hide stream, show summary
       genStream.classList.remove('active');
       genStream.style.display = 'none';
 
       if (!fullContent) {
-        genError.textContent = i.emptyResponse;
-        genError.style.display = 'block';
+        if (genRateLimit.style.display !== 'block') {
+          genError.textContent = i.emptyResponse;
+          genError.style.display = 'block';
+        }
         return;
       }
 
@@ -1023,13 +1061,12 @@
 
   // ─── Startup checks ────────────────────────────────────────────
   (async () => {
-    const DAEMON_PORT = 19925;
     const isZh = () => lang === 'zh';
 
     // Check daemon connection
     try {
-      const resp = await fetch(`http://localhost:${DAEMON_PORT}/ping`, { signal: AbortSignal.timeout(2000) });
-      if (!resp.ok) throw new Error();
+      const pingResp = await daemonFetch('/ping', 'GET');
+      if (!pingResp.ok) throw new Error();
     } catch(e) {
       daemonNotice.className = 'gen-notice warn';
       daemonNotice.innerHTML = isZh()
@@ -1041,9 +1078,9 @@
 
     // Check for updates
     try {
-      const resp = await fetch(`http://localhost:${DAEMON_PORT}/check-update`, { signal: AbortSignal.timeout(3000) });
-      if (resp.ok) {
-        const data = await resp.json();
+      const updateResp = await daemonFetch('/check-update', 'GET');
+      if (updateResp.ok) {
+        const data = JSON.parse(updateResp.body);
         if (data.update_available) {
           updateNotice.className = 'gen-notice info';
           const dl = data.download_url || 'https://github.com/nashsu/AutoCLI/releases';

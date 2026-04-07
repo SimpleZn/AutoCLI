@@ -73,7 +73,30 @@ async function connect(): Promise<void> {
 
   ws.onmessage = async (event) => {
     try {
-      const command = JSON.parse(event.data as string) as Command;
+      const raw = event.data as string;
+      const parsed = JSON.parse(raw);
+
+      // Handle AI stream chunks from daemon
+      if (parsed.type === 'ai-stream-chunk' || parsed.type === 'ai-stream-done' || parsed.type === 'ai-stream-error') {
+        const port = aiStreamPorts.get(parsed.streamId);
+        if (port) {
+          if (parsed.type === 'ai-stream-chunk') {
+            port.postMessage({ type: 'chunk', data: parsed.data });
+          } else if (parsed.type === 'ai-stream-done') {
+            port.postMessage({ type: 'done' });
+            aiStreamPorts.delete(parsed.streamId);
+            try { port.disconnect(); } catch {}
+          } else if (parsed.type === 'ai-stream-error') {
+            port.postMessage({ type: 'error', status: parsed.status || 0, body: parsed.body || parsed.error || '' });
+            aiStreamPorts.delete(parsed.streamId);
+            try { port.disconnect(); } catch {}
+          }
+        }
+        return;
+      }
+
+      // Normal command from daemon
+      const command = parsed as Command;
       const result = await handleCommand(command);
       ws?.send(JSON.stringify(result));
     } catch (err) {
@@ -742,6 +765,80 @@ export const __test__ = {
     setWorkspaceSession(workspace, session);
   },
 };
+
+// ─── Daemon proxy: relay localhost requests from content scripts ──
+const DAEMON_PORT = 19925;
+const DAEMON_BASE = `http://localhost:${DAEMON_PORT}`;
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type === 'daemon-fetch') {
+    const { path, method, body } = msg;
+    const url = `${DAEMON_BASE}${path}`;
+    const opts: RequestInit = {
+      method: method || 'GET',
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    };
+
+    fetch(url, opts)
+      .then(async (resp) => {
+        const text = await resp.text();
+        sendResponse({ ok: resp.ok, status: resp.status, body: text });
+      })
+      .catch((e) => {
+        sendResponse({ ok: false, status: 0, body: '', error: e.message });
+      });
+
+    return true; // async response
+  }
+
+  if (msg?.type === 'daemon-stream') {
+    const { path, body } = msg;
+    const url = `${DAEMON_BASE}${path}`;
+
+    // For streaming, we can't use sendResponse (one-shot).
+    // Instead, use a port-based approach via chrome.runtime.connect.
+    // But since content scripts initiate this, we handle it differently —
+    // content.js will use the port approach directly.
+    sendResponse({ error: 'Use daemon-stream-port instead' });
+    return false;
+  }
+
+  if (msg?.type === 'getStatus') {
+    // Move existing getStatus handler here (already handled above)
+  }
+
+  return false;
+});
+
+// Port-based streaming for AI generate — uses existing daemon WebSocket
+const aiStreamPorts = new Map<string, chrome.runtime.Port>();
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== 'daemon-stream') return;
+
+  const streamId = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  aiStreamPorts.set(streamId, port);
+
+  port.onMessage.addListener((msg) => {
+    // Send AI generate request through existing daemon WebSocket
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'ai-generate',
+        streamId,
+        ...msg,
+      }));
+    } else {
+      port.postMessage({ type: 'error', status: 0, body: 'Daemon not connected' });
+      try { port.disconnect(); } catch {}
+      aiStreamPorts.delete(streamId);
+    }
+  });
+
+  port.onDisconnect.addListener(() => {
+    aiStreamPorts.delete(streamId);
+  });
+});
 
 // ─── Selector Tool: inject on extension icon click ──────────────
 chrome.action.onClicked.addListener(async (tab) => {
