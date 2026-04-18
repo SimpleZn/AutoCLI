@@ -5,6 +5,26 @@ use serde_json::Value;
 use std::sync::Arc;
 use std::collections::HashMap;
 
+/// Inject cookies from CookieCloud for the given domain if configured.
+/// Silently skips if CookieCloud is not configured or the server is unreachable.
+async fn inject_cookiecloud_cookies(page: &dyn IPage, domain: &str) {
+    let config = autocli_ai::load_config();
+    let cc = match &config.cookiecloud {
+        Some(c) if c.is_configured() => c.clone(),
+        _ => return,
+    };
+    match autocli_ai::fetch_cookies_for_domain(&cc, domain).await {
+        Ok(cookies) if !cookies.is_empty() => {
+            tracing::debug!(domain, count = cookies.len(), "Injecting CookieCloud cookies");
+            if let Err(e) = page.set_cookies(cookies).await {
+                tracing::warn!(domain, error = %e, "Failed to inject CookieCloud cookies");
+            }
+        }
+        Ok(_) => tracing::debug!(domain, "No CookieCloud cookies for domain"),
+        Err(e) => tracing::warn!(domain, error = %e, "CookieCloud fetch failed (skipping)"),
+    }
+}
+
 /// Get daemon port from env or default
 fn daemon_port() -> u16 {
     std::env::var("AUTOCLI_DAEMON_PORT")
@@ -58,6 +78,12 @@ async fn execute_command_inner(
         // Browser session
         let mut bridge = BrowserBridge::new(daemon_port());
         let page = bridge.connect().await?;
+
+        // Inject cookies from CookieCloud before navigation so http_only cookies
+        // are present in the browser session from the very first request.
+        if let Some(domain) = &cmd.domain {
+            inject_cookiecloud_cookies(page.as_ref(), domain).await;
+        }
 
         // Pre-navigate to domain if set, but ONLY if the pipeline doesn't
         // start with its own navigate step (to avoid double navigation).

@@ -15,6 +15,9 @@ pub struct DaemonCommand {
     pub tab_id: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub format: Option<String>,
+    /// Cookie payload for the set-cookies action
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cookies: Option<Value>,
 }
 
 impl DaemonCommand {
@@ -27,6 +30,7 @@ impl DaemonCommand {
             workspace: None,
             tab_id: None,
             format: None,
+            cookies: None,
         }
     }
 
@@ -52,6 +56,11 @@ impl DaemonCommand {
 
     pub fn with_format(mut self, format: impl Into<String>) -> Self {
         self.format = Some(format.into());
+        self
+    }
+
+    pub fn with_cookies(mut self, cookies: Value) -> Self {
+        self.cookies = Some(cookies);
         self
     }
 }

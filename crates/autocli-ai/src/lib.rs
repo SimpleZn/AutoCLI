@@ -7,6 +7,7 @@ pub mod config;
 pub mod llm;
 pub mod ai_generate;
 pub mod url_pattern;
+pub mod cookiecloud;
 
 pub use explore::explore;
 pub use synthesize::{synthesize, render_synthesize_summary, SynthesizeCandidateSummary, SynthesizeResult};
@@ -20,6 +21,7 @@ pub use types::{
     ExploreResult, FieldInfo, InferredCapability, RecommendedArg, ResponseAnalysis,
     StoreHint, StoreInfo, StrategyTestResult, SynthesizeOptions,
 };
-pub use config::{load_config, save_config, config_path, api_base, search_url, upload_url, command_config_url, user_agent, Config, LlmConfig};
+pub use config::{load_config, save_config, config_path, api_base, search_url, upload_url, command_config_url, user_agent, Config, LlmConfig, CookieCloudConfig};
+pub use cookiecloud::{fetch_cookies_for_domain, fetch_all_cookies};
 pub use ai_generate::generate_with_ai;
 pub use url_pattern::url_to_pattern;

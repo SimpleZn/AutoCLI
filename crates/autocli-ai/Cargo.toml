@@ -14,5 +14,9 @@ async-trait = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 url = "2"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "gzip"] }
 urlencoding = "2"
+md5 = "0.7"
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc"] }
+base64 = "0.22"

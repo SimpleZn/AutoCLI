@@ -7,7 +7,7 @@
  * Everything else is just JS code sent via 'exec'.
  */
 
-export type Action = 'exec' | 'navigate' | 'tabs' | 'cookies' | 'screenshot' | 'close-window' | 'sessions' | 'set-file-input' | 'cdp';
+export type Action = 'exec' | 'navigate' | 'tabs' | 'cookies' | 'set-cookies' | 'screenshot' | 'close-window' | 'sessions' | 'set-file-input' | 'cdp';
 
 export interface Command {
   /** Unique request ID */
@@ -28,6 +28,17 @@ export interface Command {
   index?: number;
   /** Cookie domain filter */
   domain?: string;
+  /** Cookies to set (set-cookies action) */
+  cookies?: Array<{
+    name: string;
+    value: string;
+    domain?: string;
+    path?: string;
+    secure?: boolean;
+    httpOnly?: boolean;
+    sameSite?: 'no_restriction' | 'lax' | 'strict' | 'unspecified';
+    expirationDate?: number;
+  }>;
   /** Screenshot format: png (default) or jpeg */
   format?: 'png' | 'jpeg';
   /** JPEG quality (0-100), only for jpeg format */

@@ -13,6 +13,28 @@ pub struct Config {
     /// AutoCLI token for authenticated API access
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "autocli-token")]
     pub autocli_token: Option<String>,
+    /// CookieCloud sync configuration
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cookiecloud: Option<CookieCloudConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CookieCloudConfig {
+    /// CookieCloud server URL (e.g. "https://cookie.example.com")
+    #[serde(default)]
+    pub server_url: String,
+    /// CookieCloud UUID
+    #[serde(default)]
+    pub uuid: String,
+    /// CookieCloud password
+    #[serde(default)]
+    pub password: String,
+}
+
+impl CookieCloudConfig {
+    pub fn is_configured(&self) -> bool {
+        !self.server_url.is_empty() && !self.uuid.is_empty() && !self.password.is_empty()
+    }
 }
 
 /// Get the AutoCLI server base URL from env var or default.

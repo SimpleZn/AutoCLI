@@ -57,7 +57,33 @@ pub async fn run_doctor() {
         println!("CDP endpoint: {}", endpoint);
     }
 
-    // 6. Print adapter stats
+    // 6. CookieCloud status
+    println!();
+    println!("{}", "CookieCloud:".bold());
+    let config = autocli_ai::load_config();
+    match &config.cookiecloud {
+        Some(cc) if cc.is_configured() => {
+            print_check("Configured", true);
+            // Test reachability
+            match autocli_ai::fetch_all_cookies(cc).await {
+                Ok(domains) => {
+                    let total: usize = domains.values().map(|v| v.len()).sum();
+                    print_check(
+                        &format!("Server reachable ({} domains, {} cookies)", domains.len(), total),
+                        true,
+                    );
+                }
+                Err(e) => {
+                    print_check(&format!("Server reachable ({})", e), false);
+                }
+            }
+        }
+        _ => {
+            print_check("Configured (run: autocli cookies setup)", false);
+        }
+    }
+
+    // 7. Print adapter stats
     println!();
     println!("{}", "Adapter stats:".bold());
     // Will be filled in by main.rs passing registry info

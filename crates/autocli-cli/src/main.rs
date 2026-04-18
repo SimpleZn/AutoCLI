@@ -7,7 +7,7 @@ use i18n::t;
 
 use clap::{Arg, ArgAction, Command};
 use clap_complete::Shell;
-use autocli_core::Registry;
+use autocli_core::{Cookie, Registry};
 use serde_json::Value;
 use autocli_discovery::{discover_builtin_adapters, discover_user_adapters};
 use autocli_external::{load_external_clis, ExternalCli};
@@ -130,6 +130,23 @@ fn build_cli(registry: &Registry, external_clis: &[ExternalCli]) -> Command {
         .subcommand(
             Command::new("auth")
                 .about("Authenticate with AutoCLI"),
+        )
+        .subcommand(
+            Command::new("cookies")
+                .about("Manage CookieCloud cookie synchronization")
+                .subcommand(
+                    Command::new("setup")
+                        .about("Interactive setup wizard for CookieCloud"),
+                )
+                .subcommand(
+                    Command::new("sync")
+                        .about("Test CookieCloud connection and show cookie summary"),
+                )
+                .subcommand(
+                    Command::new("list")
+                        .about("List available cookie domains from CookieCloud")
+                        .arg(Arg::new("domain").help("Filter by domain (optional)")),
+                ),
         );
 
     app
@@ -418,6 +435,163 @@ async fn upload_adapter(yaml: &str) {
             }
         }
         Err(e) => { eprintln!("{}{}", t("❌ 上传失败: ", "❌ Upload failed: "), e); }
+    }
+}
+
+async fn handle_cookies_command(matches: &clap::ArgMatches) {
+    match matches.subcommand() {
+        Some(("setup", _)) => cookies_setup().await,
+        Some(("sync", _)) => cookies_sync().await,
+        Some(("list", sub)) => {
+            let domain = sub.get_one::<String>("domain").map(|s| s.as_str());
+            cookies_list(domain).await;
+        }
+        _ => {
+            eprintln!("{}", t(
+                "用法: autocli cookies <setup|sync|list>",
+                "Usage: autocli cookies <setup|sync|list>",
+            ));
+        }
+    }
+}
+
+async fn cookies_setup() {
+    use autocli_ai::{load_config, save_config, CookieCloudConfig};
+
+    eprintln!("{}", t(
+        "🍪 CookieCloud 配置向导",
+        "🍪 CookieCloud Setup Wizard",
+    ));
+    eprintln!("{}", t(
+        "   自托管文档: https://github.com/easychen/CookieCloud",
+        "   Self-host docs: https://github.com/easychen/CookieCloud",
+    ));
+    eprintln!();
+
+    let server_url = match inquire::Text::new(t("CookieCloud 服务器 URL:", "CookieCloud server URL:"))
+        .with_placeholder("https://cookie.example.com")
+        .prompt()
+    {
+        Ok(v) => v.trim().trim_end_matches('/').to_string(),
+        Err(_) => { eprintln!("{}", t("已取消", "Cancelled")); return; }
+    };
+
+    let uuid = match inquire::Text::new(t("UUID:", "UUID:")).prompt() {
+        Ok(v) => v.trim().to_string(),
+        Err(_) => { eprintln!("{}", t("已取消", "Cancelled")); return; }
+    };
+
+    let password = match inquire::Password::new(t("密码:", "Password:"))
+        .without_confirmation()
+        .prompt()
+    {
+        Ok(v) => v.trim().to_string(),
+        Err(_) => { eprintln!("{}", t("已取消", "Cancelled")); return; }
+    };
+
+    if server_url.is_empty() || uuid.is_empty() || password.is_empty() {
+        eprintln!("{}", t("❌ 所有字段均为必填", "❌ All fields are required"));
+        return;
+    }
+
+    // Test connection before saving
+    eprintln!("{}", t("🔍 测试连接...", "🔍 Testing connection..."));
+    let cc = CookieCloudConfig { server_url: server_url.clone(), uuid: uuid.clone(), password: password.clone() };
+    match autocli_ai::fetch_all_cookies(&cc).await {
+        Ok(domains) => {
+            eprintln!("{}", t(
+                &format!("✅ 连接成功，共 {} 个 Cookie 域", domains.len()),
+                &format!("✅ Connected — {} cookie domains available", domains.len()),
+            ));
+        }
+        Err(e) => {
+            eprintln!("{}{}", t("⚠️  连接测试失败: ", "⚠️  Connection test failed: "), e);
+            let proceed = inquire::Confirm::new(t("仍然保存配置?", "Save config anyway?"))
+                .with_default(false)
+                .prompt()
+                .unwrap_or(false);
+            if !proceed { return; }
+        }
+    }
+
+    let mut config = load_config();
+    config.cookiecloud = Some(cc);
+    match save_config(&config) {
+        Ok(_) => eprintln!("{}", t("✅ 配置已保存", "✅ Config saved")),
+        Err(e) => eprintln!("{}{}", t("❌ 保存失败: ", "❌ Save failed: "), e),
+    }
+}
+
+async fn cookies_sync() {
+    let config = autocli_ai::load_config();
+    let cc = match &config.cookiecloud {
+        Some(c) if c.is_configured() => c.clone(),
+        _ => {
+            eprintln!("{}", t(
+                "❌ CookieCloud 未配置，请先运行: autocli cookies setup",
+                "❌ CookieCloud not configured. Run: autocli cookies setup",
+            ));
+            return;
+        }
+    };
+
+    eprintln!("{}", t("🔄 从 CookieCloud 同步...", "🔄 Syncing from CookieCloud..."));
+    match autocli_ai::fetch_all_cookies(&cc).await {
+        Ok(domains) => {
+            let total_cookies: usize = domains.values().map(|v| v.len()).sum();
+            eprintln!("{}", t(
+                &format!("✅ 成功  {} 个域  {} 个 Cookie", domains.len(), total_cookies),
+                &format!("✅ OK  {} domains  {} cookies", domains.len(), total_cookies),
+            ));
+        }
+        Err(e) => eprintln!("{}{}", t("❌ 同步失败: ", "❌ Sync failed: "), e),
+    }
+}
+
+async fn cookies_list(domain_filter: Option<&str>) {
+    let config = autocli_ai::load_config();
+    let cc = match &config.cookiecloud {
+        Some(c) if c.is_configured() => c.clone(),
+        _ => {
+            eprintln!("{}", t(
+                "❌ CookieCloud 未配置，请先运行: autocli cookies setup",
+                "❌ CookieCloud not configured. Run: autocli cookies setup",
+            ));
+            return;
+        }
+    };
+
+    match autocli_ai::fetch_all_cookies(&cc).await {
+        Ok(all) => {
+            let mut domains: Vec<(&String, &Vec<Cookie>)> = all.iter().collect();
+            domains.sort_by_key(|(k, _)| k.as_str());
+
+            if let Some(filter) = domain_filter {
+                let filter_stripped = filter.trim_start_matches('.');
+                domains.retain(|(k, _)| {
+                    let k_stripped = k.trim_start_matches('.');
+                    k_stripped == filter_stripped
+                        || k_stripped.ends_with(&format!(".{filter_stripped}"))
+                        || filter_stripped.ends_with(&format!(".{k_stripped}"))
+                });
+            }
+
+            if domains.is_empty() {
+                eprintln!("{}", t("没有找到匹配的 Cookie", "No matching cookies found"));
+                return;
+            }
+
+            for (domain, cookies) in domains {
+                let http_only_count = cookies.iter().filter(|c| c.http_only.unwrap_or(false)).count();
+                println!(
+                    "{}  ({} cookies, {} httpOnly)",
+                    domain,
+                    cookies.len(),
+                    http_only_count,
+                );
+            }
+        }
+        Err(e) => eprintln!("{}{}", t("❌ 获取失败: ", "❌ Fetch failed: "), e),
     }
 }
 
@@ -770,6 +944,10 @@ async fn main() {
                         }
                     }
                 }
+                return;
+            }
+            "cookies" => {
+                handle_cookies_command(site_matches).await;
                 return;
             }
             "explore" => {

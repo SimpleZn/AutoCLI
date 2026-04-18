@@ -122,20 +122,37 @@ impl IPage for DaemonPage {
     }
 
     async fn set_cookies(&self, cookies: Vec<Cookie>) -> Result<(), CliError> {
-        let js = format!(
-            "(() => {{ {} return true; }})()",
-            cookies
-                .iter()
-                .map(|c| format!(
-                    "document.cookie = '{}={}; path={}';",
-                    c.name,
-                    c.value,
-                    c.path.as_deref().unwrap_or("/")
-                ))
-                .collect::<Vec<_>>()
-                .join(" ")
-        );
-        self.eval_js(&js).await?;
+        // Serialize cookies to JSON for the extension's chrome.cookies.set() API,
+        // which supports http_only cookies unlike JS document.cookie injection.
+        let cookie_values: Vec<serde_json::Value> = cookies
+            .iter()
+            .map(|c| {
+                let mut obj = serde_json::json!({
+                    "name": c.name,
+                    "value": c.value,
+                    "path": c.path.as_deref().unwrap_or("/"),
+                    "secure": c.secure.unwrap_or(false),
+                    "httpOnly": c.http_only.unwrap_or(false),
+                });
+                if let Some(domain) = &c.domain {
+                    obj["domain"] = serde_json::Value::String(domain.clone());
+                }
+                if let Some(expires) = c.expires {
+                    obj["expirationDate"] = serde_json::Value::from(expires);
+                }
+                if let Some(same_site) = &c.same_site {
+                    obj["sameSite"] = serde_json::Value::String(same_site.to_lowercase());
+                }
+                obj
+            })
+            .collect();
+
+        let cmd = self
+            .cmd("set-cookies")
+            .await
+            .with_cookies(serde_json::Value::Array(cookie_values));
+        let resp = self.send(cmd).await?;
+        tracing::debug!(response = %resp, "set-cookies response from extension");
         Ok(())
     }
 

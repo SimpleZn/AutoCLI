@@ -294,6 +294,8 @@ async function handleCommand(cmd: Command): Promise<Result> {
         return await handleTabs(cmd, workspace);
       case 'cookies':
         return await handleCookies(cmd);
+      case 'set-cookies':
+        return await handleSetCookies(cmd);
       case 'screenshot':
         return await handleScreenshot(cmd, workspace);
       case 'close-window':
@@ -643,6 +645,41 @@ async function handleCookies(cmd: Command): Promise<Result> {
     expirationDate: c.expirationDate,
   }));
   return { id: cmd.id, ok: true, data };
+}
+
+async function handleSetCookies(cmd: Command): Promise<Result> {
+  if (!cmd.cookies || cmd.cookies.length === 0) {
+    return { id: cmd.id, ok: true, data: { set: 0 } };
+  }
+  let set = 0;
+  const errors: string[] = [];
+  for (const cookie of cmd.cookies) {
+    try {
+      const domain = cookie.domain ?? '';
+      const normalizedDomain = domain.startsWith('.') ? domain.slice(1) : domain;
+      const scheme = cookie.secure ? 'https' : 'http';
+      const url = `${scheme}://${normalizedDomain}${cookie.path ?? '/'}`;
+      const details: chrome.cookies.SetDetails = {
+        url,
+        name: cookie.name,
+        value: cookie.value,
+        path: cookie.path ?? '/',
+        secure: cookie.secure ?? false,
+        httpOnly: cookie.httpOnly ?? false,
+        sameSite: (cookie.sameSite as chrome.cookies.SameSiteStatus) ?? 'unspecified',
+      };
+      if (cookie.domain) details.domain = cookie.domain;
+      if (cookie.expirationDate !== undefined) details.expirationDate = cookie.expirationDate;
+      await chrome.cookies.set(details);
+      set++;
+    } catch (err) {
+      errors.push(`${cookie.name}: ${err}`);
+    }
+  }
+  if (errors.length > 0) {
+    return { id: cmd.id, ok: true, data: { set, errors } };
+  }
+  return { id: cmd.id, ok: true, data: { set } };
 }
 
 async function handleScreenshot(cmd: Command, workspace: string): Promise<Result> {
