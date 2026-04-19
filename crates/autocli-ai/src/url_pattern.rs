@@ -217,8 +217,8 @@ mod tests {
     #[test]
     fn test_path_with_hyphen_not_replaced() {
         assert_eq!(
-            url_to_pattern("https://github.com/nashsu/autocli"),
-            "https://github.com/nashsu/autocli"
+            url_to_pattern("https://github.com/SimpleZn/autocli"),
+            "https://github.com/SimpleZn/autocli"
         );
     }
 
@@ -291,8 +291,8 @@ mod tests {
     #[test]
     fn test_real_03_github_issue() {
         assert_eq!(
-            url_to_pattern("https://github.com/nashsu/autocli/issues/42?ref=main"),
-            "https://github.com/nashsu/autocli/issues/:id?ref"
+            url_to_pattern("https://github.com/SimpleZn/autocli/issues/42?ref=main"),
+            "https://github.com/SimpleZn/autocli/issues/:id?ref"
         );
     }
 
@@ -334,9 +334,9 @@ mod tests {
     fn test_real_08_github_api() {
         assert_eq!(
             url_to_pattern(
-                "https://api.github.com/repos/nashsu/autocli/stargazers?page=2&per_page=100"
+                "https://api.github.com/repos/SimpleZn/autocli/stargazers?page=2&per_page=100"
             ),
-            "https://api.github.com/repos/nashsu/autocli/stargazers?page&per_page"
+            "https://api.github.com/repos/SimpleZn/autocli/stargazers?page&per_page"
         );
     }
 

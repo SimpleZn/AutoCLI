@@ -69,7 +69,7 @@
 ### ワンライナーインストールスクリプト（macOS / Linux）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nashsu/autocli/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/SimpleZn/autocli/main/scripts/install.sh | sh
 ```
 
 システムとアーキテクチャを自動検出し、対応するバイナリをダウンロードして `/usr/local/bin/` にインストールします。
@@ -77,7 +77,7 @@ curl -fsSL https://raw.githubusercontent.com/nashsu/autocli/main/scripts/install
 ### Windows (PowerShell)
 
 ```powershell
-Invoke-WebRequest -Uri "https://github.com/nashsu/autocli/releases/latest/download/autocli-x86_64-pc-windows-msvc.zip" -OutFile autocli.zip
+Invoke-WebRequest -Uri "https://github.com/SimpleZn/autocli/releases/latest/download/autocli-x86_64-pc-windows-msvc.zip" -OutFile autocli.zip
 Expand-Archive autocli.zip -DestinationPath .
 Move-Item autocli.exe "$env:LOCALAPPDATA\Microsoft\WindowsApps\"
 ```
@@ -85,7 +85,7 @@ Move-Item autocli.exe "$env:LOCALAPPDATA\Microsoft\WindowsApps\"
 
 ### 手動ダウンロード（最も簡単）
 
-[GitHub Releases](https://github.com/nashsu/autocli/releases/latest) から対応プラットフォームのファイルをダウンロード：
+[GitHub Releases](https://github.com/SimpleZn/autocli/releases/latest) から対応プラットフォームのファイルをダウンロード：
 
 | プラットフォーム | ファイル |
 |------|------|
@@ -100,7 +100,7 @@ Move-Item autocli.exe "$env:LOCALAPPDATA\Microsoft\WindowsApps\"
 ### ソースからビルド
 
 ```bash
-git clone https://github.com/nashsu/autocli.git
+git clone https://github.com/SimpleZn/autocli.git
 cd autocli
 cargo build --release
 cp target/release/autocli /usr/local/bin/   # macOS / Linux
@@ -112,7 +112,7 @@ cp target/release/autocli /usr/local/bin/   # macOS / Linux
 
 ### Chrome 拡張機能のインストール（ブラウザコマンドに必要）
 
-1. [GitHub Releases](https://github.com/nashsu/autocli/releases/latest) から `autocli-chrome-extension.zip` をダウンロード
+1. [GitHub Releases](https://github.com/SimpleZn/autocli/releases/latest) から `autocli-chrome-extension.zip` をダウンロード
 2. 任意のディレクトリに解凍
 3. Chrome を開き、`chrome://extensions` にアクセス
 4. 右上の「デベロッパーモード」を有効化
@@ -126,7 +126,7 @@ cp target/release/autocli /usr/local/bin/   # macOS / Linux
 ワンクリックで AI Agent に autocli skill をインストール：
 
 ```bash
-npx skills add https://github.com/nashsu/autocli-skill
+npx skills add https://github.com/SimpleZn/autocli-skill
 ```
 
 ## クイックスタート
@@ -612,11 +612,11 @@ cargo build
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=nashsu%2Fautocli&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=SimpleZn%2Fautocli&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=nashsu/autocli&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=nashsu/autocli&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=nashsu/autocli&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=SimpleZn/autocli&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=SimpleZn/autocli&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=SimpleZn/autocli&type=date&legend=top-left" />
  </picture>
 </a>
 

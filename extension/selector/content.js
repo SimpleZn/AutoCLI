@@ -1138,7 +1138,7 @@
         const data = JSON.parse(updateResp.body);
         if (data.update_available) {
           updateNotice.className = 'gen-notice info';
-          const dl = data.download_url || 'https://github.com/nashsu/AutoCLI/releases';
+          const dl = data.download_url || 'https://github.com/SimpleZn/AutoCLI/releases';
           updateNotice.innerHTML = isZh()
             ? `<div class="notice-title"><span class="notice-bar info"></span>新版本可用: ${esc(data.latest_version)}</div>当前版本: ${esc(data.current_version)} · <a class="notice-link" href="${esc(dl)}" target="_blank">前往下载 →</a>`
             : `<div class="notice-title"><span class="notice-bar info"></span>Update available: ${esc(data.latest_version)}</div>Current: ${esc(data.current_version)} · <a class="notice-link" href="${esc(dl)}" target="_blank">Download →</a>`;
