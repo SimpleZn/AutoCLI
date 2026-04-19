@@ -175,13 +175,44 @@ async fn execute_article_download(
         })
         .unwrap_or_default();
 
+    // Extract URL from params or data
+    let url = params
+        .get("url")
+        .and_then(|v| v.as_str())
+        .map(String::from)
+        .or_else(|| data.get("url").and_then(|v| v.as_str()).map(String::from));
+
+    let mut result = serde_json::Map::new();
+    result.insert("title".to_string(), Value::String(title.clone()));
+    if let Some(ref u) = url {
+        let filename = u
+            .rsplit('/')
+            .next()
+            .unwrap_or("download")
+            .split('?')
+            .next()
+            .unwrap_or("download");
+        result.insert("download_url".to_string(), Value::String(u.clone()));
+        result.insert("download_path".to_string(), Value::String(filename.to_string()));
+    }
+    result.insert(
+        "download_type".to_string(),
+        Value::String("article".to_string()),
+    );
+    result.insert(
+        "output_dir".to_string(),
+        Value::String(output_dir.clone()),
+    );
+    result.insert(
+        "filename".to_string(),
+        Value::String(filename.clone()),
+    );
+
     if content.is_empty() {
-        return Ok(serde_json::json!([{
-            "title": title,
-            "author": "-",
-            "status": "failed",
-            "size": "No content to save"
-        }]));
+        result.insert("author".to_string(), Value::String("-".to_string()));
+        result.insert("status".to_string(), Value::String("failed".to_string()));
+        result.insert("size".to_string(), Value::String("No content to save".to_string()));
+        return Ok(Value::Object(result));
     }
 
     // Create article directory (output/safe_title/)
@@ -310,22 +341,19 @@ async fn execute_article_download(
 
             info!(title = %title, path = %file_path, size = %size_str, "Article saved");
             let author = data.get("author").and_then(|v| v.as_str()).unwrap_or("-");
-
-            Ok(serde_json::json!([{
-                "title": title,
-                "author": author,
-                "status": "ok",
-                "size": size_str,
-                "path": file_path,
-                "images": image_urls.len(),
-            }]))
+            result.insert("author".to_string(), Value::String(author.to_string()));
+            result.insert("status".to_string(), Value::String("ok".to_string()));
+            result.insert("size".to_string(), Value::String(size_str));
+            result.insert("path".to_string(), Value::String(file_path));
+            result.insert("images".to_string(), Value::Number(serde_json::Number::from(image_urls.len())));
+            Ok(Value::Object(result))
         }
-        Err(e) => Ok(serde_json::json!([{
-            "title": title,
-            "author": "-",
-            "status": "failed",
-            "size": format!("Write error: {}", e)
-        }])),
+        Err(e) => {
+            result.insert("author".to_string(), Value::String("-".to_string()));
+            result.insert("status".to_string(), Value::String("failed".to_string()));
+            result.insert("size".to_string(), Value::String(format!("Write error: {}", e)));
+            Ok(Value::Object(result))
+        },
     }
 }
 
