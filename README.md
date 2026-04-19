@@ -15,6 +15,18 @@
 
 ## What's New
 
+### v0.3.7
+- **CI/CD Pipeline** — Automated lint, test, and cross-platform build (macOS/Linux/Windows) on every push
+- **CookieCloud Integration** — Automatic cookie injection from your self-hosted CookieCloud server, no manual login needed
+- **Private Mode** — Enhanced privacy controls for browser automation
+
+### v0.3.5
+- **Fix**: `fetch` step now correctly respects query parameters defined in adapter YAML
+
+### v0.3.4
+- **YouTube**: New `comment` and `comments` adapters
+- **Twitter**: Fixed search adapter broken by X platform changes
+
 ### v0.3.2
 - **Chrome Extension Selector Tool** — Just select the core data you need, visually pick elements from any page and build precise CSS selectors to target specific content
 - **AI-Powered Generation via AutoCLI.ai** — Based on your selected data, AI automatically expands and discovers related fields, generating complete scraping rules
@@ -69,7 +81,7 @@ A **complete rewrite in pure Rust** based on [OpenCLI](https://github.com/jackwe
 ### One-line Install Script (macOS / Linux)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nashsu/autocli/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/SimpleZn/autocli/main/scripts/install.sh | sh
 ```
 
 Automatically detects your system and architecture, downloads the corresponding binary, and installs to `/usr/local/bin/`.
@@ -77,7 +89,7 @@ Automatically detects your system and architecture, downloads the corresponding 
 ### Windows (PowerShell)
 
 ```powershell
-Invoke-WebRequest -Uri "https://github.com/nashsu/autocli/releases/latest/download/autocli-x86_64-pc-windows-msvc.zip" -OutFile autocli.zip
+Invoke-WebRequest -Uri "https://github.com/SimpleZn/autocli/releases/latest/download/autocli-x86_64-pc-windows-msvc.zip" -OutFile autocli.zip
 Expand-Archive autocli.zip -DestinationPath .
 Move-Item autocli.exe "$env:LOCALAPPDATA\Microsoft\WindowsApps\"
 ```
@@ -85,7 +97,7 @@ Move-Item autocli.exe "$env:LOCALAPPDATA\Microsoft\WindowsApps\"
 
 ### Manual Download (Simplest)
 
-Download the file for your platform from [GitHub Releases](https://github.com/nashsu/autocli/releases/latest):
+Download the file for your platform from [GitHub Releases](https://github.com/SimpleZn/autocli/releases/latest):
 
 | Platform | File |
 |------|------|
@@ -100,7 +112,7 @@ After extracting, place `autocli` (or `autocli.exe` on Windows) in your system P
 ### Build from Source
 
 ```bash
-git clone https://github.com/nashsu/autocli.git
+git clone https://github.com/SimpleZn/autocli.git
 cd autocli
 cargo build --release
 cp target/release/autocli /usr/local/bin/   # macOS / Linux
@@ -112,7 +124,7 @@ Simply re-run the install command or download the latest release to overwrite th
 
 ### Chrome Extension Setup (required for browser commands)
 
-1. Download `autocli-chrome-extension.zip` from [GitHub Releases](https://github.com/nashsu/autocli/releases/latest)
+1. Download `autocli-chrome-extension.zip` from [GitHub Releases](https://github.com/SimpleZn/autocli/releases/latest)
 2. Extract to any directory
 3. Open Chrome and go to `chrome://extensions`
 4. Enable "Developer mode" (top right toggle)
@@ -126,7 +138,7 @@ Simply re-run the install command or download the latest release to overwrite th
 One-click install autocli skill for your AI Agent:
 
 ```bash
-npx skills add https://github.com/nashsu/autocli-skill
+npx skills add https://github.com/SimpleZn/autocli-skill
 ```
 
 ## Quick Start
@@ -459,12 +471,13 @@ Pipelines use the `${{ expression }}` syntax:
 
 | Variable | Default | Description |
 |------|--------|------|
-| `OPENCLI_VERBOSE` | - | Enable verbose output |
-| `OPENCLI_DAEMON_PORT` | `19825` | Daemon port |
-| `OPENCLI_CDP_ENDPOINT` | - | CDP direct endpoint (bypasses Daemon) |
-| `OPENCLI_BROWSER_COMMAND_TIMEOUT` | `60` | Command timeout (seconds) |
-| `OPENCLI_BROWSER_CONNECT_TIMEOUT` | `30` | Browser connection timeout (seconds) |
-| `OPENCLI_BROWSER_EXPLORE_TIMEOUT` | `120` | Explore timeout (seconds) |
+| `AUTOCLI_API_BASE` | `https://www.autocli.ai` | Override API server URL |
+| `AUTOCLI_VERBOSE` | - | Enable verbose output |
+| `AUTOCLI_DAEMON_PORT` | `19925` | Daemon port |
+| `AUTOCLI_CDP_ENDPOINT` | - | CDP direct endpoint (bypasses Daemon) |
+| `AUTOCLI_BROWSER_COMMAND_TIMEOUT` | `60` | Command timeout (seconds) |
+| `AUTOCLI_BROWSER_CONNECT_TIMEOUT` | `30` | Browser connection timeout (seconds) |
+| `AUTOCLI_BROWSER_EXPLORE_TIMEOUT` | `120` | Explore timeout (seconds) |
 
 ### File Paths
 
@@ -473,6 +486,32 @@ Pipelines use the `${{ expression }}` syntax:
 | `~/.autocli/adapters/` | User custom adapters |
 | `~/.autocli/plugins/` | User plugins |
 | `~/.autocli/external-clis.yaml` | User external CLI registry |
+| `~/.autocli/config.json` | User config (token, CookieCloud credentials) |
+
+## CookieCloud Integration
+
+AutoCLI integrates with [CookieCloud](https://github.com/easychen/CookieCloud) to inject browser cookies from a self-hosted server into Chrome automation, enabling authenticated adapters without manual login.
+
+```bash
+# 1. Setup (one time)
+autocli cookies setup          # prompts for server URL, UUID, password
+
+# 2. Sync (after logging into sites in real Chrome + CookieCloud extension sync)
+autocli cookies sync           # fetches & decrypts from CookieCloud server
+
+# 3. List (verify what was synced)
+autocli cookies list           # all domains
+autocli cookies list bilibili.com   # specific domain
+
+# 4. Use normally — cookies are injected automatically
+autocli bilibili me
+autocli weread shelf
+
+# 5. Diagnose
+autocli doctor                 # shows CookieCloud status + cookie count
+```
+
+Cookies are injected **before** page navigation so the very first HTTP request carries the session. Supports `httpOnly` cookies like `SESSDATA` that JavaScript injection cannot set.
 
 ## Architecture
 
@@ -512,7 +551,7 @@ Pipelines use the `${{ expression }}` syntax:
 │  │ navigate   │                      │ CdpPage (WebSocket) │    │
 │  │ map/filter │                      └──────────┬──────────┘    │
 │  │ sort/limit │                                 │               │
-│  │ intercept  │                      Daemon (axum:19825)        │
+│  │ intercept  │                      Daemon (axum:19925)        │
 │  │ tap        │                        HTTP + WebSocket          │
 │  └────────────┘                                 │               │
 │                                                 ▼               │
@@ -547,7 +586,7 @@ autocli/
 
 | Improvement | Original (TypeScript) | autocli (Rust) |
 |--------|-------------------|-------------------|
-| Distribution | Node.js + npm install (~100MB) | Single binary (4.1MB) |
+| Distribution | Node.js + npm install (~100MB) | Single binary (~4MB) |
 | Startup speed | Read manifest JSON → parse → register | Compile-time embedding, zero file I/O |
 | Template engine | JS eval (security risk) | pest PEG parser (type-safe) |
 | Concurrent fetch | Non-browser mode pool=5 | FuturesUnordered, concurrency=10 |
@@ -561,8 +600,11 @@ autocli/
 # Build
 cargo build
 
-# Test (166 tests)
+# Test
 cargo test --workspace
+
+# Integration tests against live adapters
+make test-adapters
 
 # Release build (with LTO, ~4MB)
 cargo build --release
@@ -576,7 +618,7 @@ cargo build
 ## Supported Sites
 
 <details>
-<summary>Click to expand all 55 sites</summary>
+<summary>Click to expand all 55+ sites</summary>
 
 | Site | Commands | Strategy |
 |------|--------|------|
@@ -584,21 +626,26 @@ cargo build
 | bilibili | 12 | cookie |
 | twitter | 24 | cookie/intercept |
 | reddit | 15 | public/cookie |
-| zhihu | 2 | cookie |
+| zhihu | 4 | cookie |
 | xiaohongshu | 11 | cookie |
 | douban | 7 | cookie |
 | weibo | 2 | cookie |
 | v2ex | 11 | public/cookie |
 | bloomberg | 10 | cookie |
-| youtube | 4 | cookie |
+| youtube | 6 | cookie |
 | wikipedia | 4 | public |
 | google | 4 | public/cookie |
 | facebook | 10 | cookie |
 | instagram | 14 | cookie |
 | tiktok | 15 | cookie |
-| notion | 8 | ui |
-| cursor | 12 | ui |
-| chatgpt | 6 | public |
+| notion | 8 | desktop |
+| cursor | 12 | desktop |
+| codex | 9 | desktop |
+| chatgpt | 5 | desktop |
+| chatwise | 10 | desktop |
+| doubao-app | 7 | desktop |
+| discord-app | 8 | desktop |
+| antigravity | 8 | desktop |
 | stackoverflow | 4 | public |
 | devto | 3 | public |
 | lobsters | 4 | public |
@@ -608,17 +655,20 @@ cargo build
 | xueqiu | 7 | cookie |
 | boss | 14 | cookie |
 | jike | 10 | cookie |
-| Other 27 sites | ... | ... |
+| grok | 1 | browser |
+| jimeng | 2 | browser |
+| yollomi | 12 | browser |
+| Other 15 sites | ... | ... |
 
 </details>
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=nashsu%2Fautocli&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=SimpleZn%2Fautocli&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=nashsu/autocli&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=nashsu/autocli&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=nashsu/autocli&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=SimpleZn/autocli&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=SimpleZn/autocli&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=SimpleZn/autocli&type=date&legend=top-left" />
  </picture>
 </a>
 

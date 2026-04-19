@@ -1,10 +1,10 @@
 #!/bin/sh
 # autocli installer — detects OS/Arch and downloads the right binary
-# Usage: curl -fsSL https://raw.githubusercontent.com/nashsu/autocli/main/scripts/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/SimpleZn/AutoCLI/main/scripts/install.sh | sh
 
 set -e
 
-REPO="nashsu/autocli"
+REPO="SimpleZn/AutoCLI"
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="autocli"
 
