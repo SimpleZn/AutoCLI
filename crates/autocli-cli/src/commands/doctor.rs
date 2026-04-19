@@ -1,6 +1,6 @@
-use colored::Colorize;
 use autocli_browser::DaemonClient;
 use autocli_external::is_binary_installed;
+use colored::Colorize;
 
 pub async fn run_doctor() {
     println!("{}", "autocli diagnostics".bold());
@@ -13,7 +13,8 @@ pub async fn run_doctor() {
             || std::path::Path::new("/Applications/Google Chrome.app").exists()
     } else if cfg!(target_os = "windows") {
         std::path::Path::new(r"C:\Program Files\Google\Chrome\Application\chrome.exe").exists()
-            || std::path::Path::new(r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe").exists()
+            || std::path::Path::new(r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe")
+                .exists()
             || is_binary_installed("chrome")
     } else {
         // Linux
@@ -69,7 +70,11 @@ pub async fn run_doctor() {
                 Ok(domains) => {
                     let total: usize = domains.values().map(|v| v.len()).sum();
                     print_check(
-                        &format!("Server reachable ({} domains, {} cookies)", domains.len(), total),
+                        &format!(
+                            "Server reachable ({} domains, {} cookies)",
+                            domains.len(),
+                            total
+                        ),
                         true,
                     );
                 }

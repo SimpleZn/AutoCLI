@@ -11,7 +11,11 @@ pub struct Config {
     #[serde(default)]
     pub llm: LlmConfig,
     /// AutoCLI token for authenticated API access
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "autocli-token")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "autocli-token"
+    )]
     pub autocli_token: Option<String>,
     /// CookieCloud sync configuration
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -47,7 +51,11 @@ pub fn api_base() -> String {
 
 /// Get the search endpoint URL
 pub fn search_url(pattern: &str) -> String {
-    format!("{}/api/sites/cli/search?url={}", api_base(), urlencoding::encode(pattern))
+    format!(
+        "{}/api/sites/cli/search?url={}",
+        api_base(),
+        urlencoding::encode(pattern)
+    )
 }
 
 /// Get the upload endpoint URL
@@ -63,12 +71,25 @@ pub fn command_config_url(command_uuid: &str) -> String {
 /// Build User-Agent string: autocli/{version} ({os}; {arch}; {lang})
 pub fn user_agent() -> String {
     let version = env!("CARGO_PKG_VERSION");
-    let os = if cfg!(target_os = "macos") { "macOS" }
-        else if cfg!(target_os = "windows") { "Windows" }
-        else if cfg!(target_os = "linux") { "Linux" }
-        else { "Unknown" };
+    let os = if cfg!(target_os = "macos") {
+        "macOS"
+    } else if cfg!(target_os = "windows") {
+        "Windows"
+    } else if cfg!(target_os = "linux") {
+        "Linux"
+    } else {
+        "Unknown"
+    };
     let arch = std::env::consts::ARCH;
-    let lang = if std::env::var("LANG").unwrap_or_default().to_lowercase().starts_with("zh") { "zh" } else { "en" };
+    let lang = if std::env::var("LANG")
+        .unwrap_or_default()
+        .to_lowercase()
+        .starts_with("zh")
+    {
+        "zh"
+    } else {
+        "en"
+    };
     format!("autocli/{} ({}; {}; {})", version, os, arch, lang)
 }
 
@@ -110,9 +131,11 @@ pub fn load_config() -> Config {
 pub fn save_config(config: &Config) -> Result<(), String> {
     let path = config_path();
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create config dir: {}", e))?;
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create config dir: {}", e))?;
     }
-    let content = serde_json::to_string_pretty(config).map_err(|e| format!("Failed to serialize config: {}", e))?;
+    let content = serde_json::to_string_pretty(config)
+        .map_err(|e| format!("Failed to serialize config: {}", e))?;
     std::fs::write(&path, content).map_err(|e| format!("Failed to write config: {}", e))?;
     Ok(())
 }

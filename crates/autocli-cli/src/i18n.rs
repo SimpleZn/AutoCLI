@@ -54,5 +54,9 @@ pub fn is_chinese() -> bool {
 
 /// Select text based on OS language: Chinese or English.
 pub fn t<'a>(zh: &'a str, en: &'a str) -> &'a str {
-    if is_chinese() { zh } else { en }
+    if is_chinese() {
+        zh
+    } else {
+        en
+    }
 }

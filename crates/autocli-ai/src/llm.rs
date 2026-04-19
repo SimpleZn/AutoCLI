@@ -23,11 +23,15 @@ pub async fn generate_with_llm(
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(300))
         .build()
-        .map_err(|e| CliError::Http { message: format!("Failed to create HTTP client: {}", e), suggestions: vec![], source: None })?;
+        .map_err(|e| CliError::Http {
+            message: format!("Failed to create HTTP client: {}", e),
+            suggestions: vec![],
+            source: None,
+        })?;
 
     // Send captured_data as JSON string per API spec
-    let captured_str = serde_json::to_string(captured_data)
-        .unwrap_or_else(|_| captured_data.to_string());
+    let captured_str =
+        serde_json::to_string(captured_data).unwrap_or_else(|_| captured_data.to_string());
 
     let request_body = json!({
         "captured_data": captured_str,
@@ -35,7 +39,10 @@ pub async fn generate_with_llm(
         "stream": false
     });
 
-    debug!(body_size = request_body.to_string().len(), "Sending AI request");
+    debug!(
+        body_size = request_body.to_string().len(),
+        "Sending AI request"
+    );
 
     let resp = client
         .post(&endpoint)
@@ -45,7 +52,11 @@ pub async fn generate_with_llm(
         .json(&request_body)
         .send()
         .await
-        .map_err(|e| CliError::Http { message: format!("AI request failed: {}", e), suggestions: vec![], source: None })?;
+        .map_err(|e| CliError::Http {
+            message: format!("AI request failed: {}", e),
+            suggestions: vec![],
+            source: None,
+        })?;
 
     if resp.status().as_u16() == 403 {
         return Err(CliError::Http {
@@ -60,22 +71,38 @@ pub async fn generate_with_llm(
     if !resp.status().is_success() {
         let status = resp.status();
         let body = resp.text().await.unwrap_or_default();
-        return Err(CliError::Http { message: format!("AI API error {}: {}", status, body.chars().take(500).collect::<String>()), suggestions: vec![], source: None });
+        return Err(CliError::Http {
+            message: format!(
+                "AI API error {}: {}",
+                status,
+                body.chars().take(500).collect::<String>()
+            ),
+            suggestions: vec![],
+            source: None,
+        });
     }
 
-    let resp_json: Value = resp.json().await
-        .map_err(|e| CliError::Http { message: format!("Failed to parse AI response: {}", e), suggestions: vec![], source: None })?;
+    let resp_json: Value = resp.json().await.map_err(|e| CliError::Http {
+        message: format!("Failed to parse AI response: {}", e),
+        suggestions: vec![],
+        source: None,
+    })?;
 
     // Extract content from OpenAI-compatible response format
     let content = if let Some(choices) = resp_json.get("choices") {
-        choices.get(0)
+        choices
+            .get(0)
             .and_then(|c| c.get("message"))
             .and_then(|m| m.get("content"))
             .and_then(|c| c.as_str())
             .unwrap_or("")
             .to_string()
     } else {
-        return Err(CliError::Http { message: "Unexpected AI response format".into(), suggestions: vec![], source: None });
+        return Err(CliError::Http {
+            message: "Unexpected AI response format".into(),
+            suggestions: vec![],
+            source: None,
+        });
     };
 
     // Clean up: remove thinking tags and markdown fencing
@@ -98,7 +125,8 @@ pub async fn generate_with_llm(
     }
     let yaml = cleaned
         .trim()
-        .strip_prefix("```yaml").or_else(|| cleaned.trim().strip_prefix("```"))
+        .strip_prefix("```yaml")
+        .or_else(|| cleaned.trim().strip_prefix("```"))
         .unwrap_or(cleaned.trim())
         .strip_suffix("```")
         .unwrap_or(cleaned.trim())
@@ -106,7 +134,11 @@ pub async fn generate_with_llm(
         .to_string();
 
     if yaml.is_empty() {
-        return Err(CliError::Http { message: "AI returned empty content".into(), suggestions: vec![], source: None });
+        return Err(CliError::Http {
+            message: "AI returned empty content".into(),
+            suggestions: vec![],
+            source: None,
+        });
     }
 
     info!(yaml_len = yaml.len(), "AI generated adapter YAML");

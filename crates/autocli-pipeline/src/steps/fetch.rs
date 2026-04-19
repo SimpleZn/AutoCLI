@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use futures::stream::{self, StreamExt};
 use autocli_core::{CliError, IPage};
+use futures::stream::{self, StreamExt};
 use serde_json::Value;
 
 use crate::step_registry::{StepHandler, StepRegistry};
@@ -173,7 +173,6 @@ impl FetchStep {
                 .unwrap_or_default(),
         }
     }
-
 }
 
 impl Default for FetchStep {
@@ -196,28 +195,35 @@ impl StepHandler for FetchStep {
         args: &HashMap<String, Value>,
     ) -> Result<Value, CliError> {
         // Extract URL, method, headers, body from params
-        let (url_template, method, headers_template, body_template, query_params_template) = match params {
-            // Mode 1: simple URL string
-            Value::String(url) => (url.clone(), "GET".to_string(), None, None, None),
-            // Mode 2/3: object params
-            Value::Object(obj) => {
-                let url = obj
-                    .get("url")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| CliError::pipeline("fetch: object params must have 'url' field"))?
-                    .to_string();
-                let method = obj
-                    .get("method")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("GET")
-                    .to_string();
-                let headers = obj.get("headers").cloned();
-                let body = obj.get("body").cloned();
-                let query_params = obj.get("params").cloned();
-                (url, method, headers, body, query_params)
-            }
-            _ => return Err(CliError::pipeline("fetch: params must be a string URL or an object")),
-        };
+        let (url_template, method, headers_template, body_template, query_params_template) =
+            match params {
+                // Mode 1: simple URL string
+                Value::String(url) => (url.clone(), "GET".to_string(), None, None, None),
+                // Mode 2/3: object params
+                Value::Object(obj) => {
+                    let url = obj
+                        .get("url")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| {
+                            CliError::pipeline("fetch: object params must have 'url' field")
+                        })?
+                        .to_string();
+                    let method = obj
+                        .get("method")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("GET")
+                        .to_string();
+                    let headers = obj.get("headers").cloned();
+                    let body = obj.get("body").cloned();
+                    let query_params = obj.get("params").cloned();
+                    (url, method, headers, body, query_params)
+                }
+                _ => {
+                    return Err(CliError::pipeline(
+                        "fetch: params must be a string URL or an object",
+                    ))
+                }
+            };
 
         // Check for per-item mode: data is array AND url references item
         let is_array = data.as_array().is_some();
@@ -227,59 +233,62 @@ impl StepHandler for FetchStep {
             // Mode 3: per-item concurrent fetch
             let items = data.as_array().unwrap();
             let client = self.client.clone();
-            let results: Vec<Result<Value, CliError>> = stream::iter(items.iter().cloned().enumerate())
-                .map(|(index, item)| {
-                    let url_tmpl = url_template.clone();
-                    let method = method.clone();
-                    let headers_tmpl = headers_template.clone();
-                    let body_tmpl = body_template.clone();
-                    let qp_tmpl = query_params_template.clone();
-                    let args = args.clone();
-                    let data = data.clone();
-                    let client = client.clone();
-                    async move {
-                        let ctx = TemplateContext {
-                            args,
-                            data,
-                            item,
-                            index,
-                        };
-                        let rendered_url = render_template_str(&url_tmpl, &ctx)?;
-                        let mut url_str = rendered_url
-                            .as_str()
-                            .ok_or_else(|| CliError::pipeline("fetch: rendered URL is not a string"))?
-                            .to_string();
+            let results: Vec<Result<Value, CliError>> =
+                stream::iter(items.iter().cloned().enumerate())
+                    .map(|(index, item)| {
+                        let url_tmpl = url_template.clone();
+                        let method = method.clone();
+                        let headers_tmpl = headers_template.clone();
+                        let body_tmpl = body_template.clone();
+                        let qp_tmpl = query_params_template.clone();
+                        let args = args.clone();
+                        let data = data.clone();
+                        let client = client.clone();
+                        async move {
+                            let ctx = TemplateContext {
+                                args,
+                                data,
+                                item,
+                                index,
+                            };
+                            let rendered_url = render_template_str(&url_tmpl, &ctx)?;
+                            let mut url_str = rendered_url
+                                .as_str()
+                                .ok_or_else(|| {
+                                    CliError::pipeline("fetch: rendered URL is not a string")
+                                })?
+                                .to_string();
 
-                        // Append query params if present
-                        if let Some(qp) = &qp_tmpl {
-                            url_str = append_query_params(&url_str, qp, &ctx)?;
+                            // Append query params if present
+                            if let Some(qp) = &qp_tmpl {
+                                url_str = append_query_params(&url_str, qp, &ctx)?;
+                            }
+
+                            // Render headers if present
+                            let rendered_headers = match &headers_tmpl {
+                                Some(h) => Some(render_template(h, &ctx)?),
+                                None => None,
+                            };
+
+                            // Render body if present
+                            let rendered_body = match &body_tmpl {
+                                Some(b) => Some(render_template(b, &ctx)?),
+                                None => None,
+                            };
+
+                            do_request_with_client(
+                                &client,
+                                &url_str,
+                                &method,
+                                rendered_headers.as_ref(),
+                                rendered_body.as_ref(),
+                            )
+                            .await
                         }
-
-                        // Render headers if present
-                        let rendered_headers = match &headers_tmpl {
-                            Some(h) => Some(render_template(h, &ctx)?),
-                            None => None,
-                        };
-
-                        // Render body if present
-                        let rendered_body = match &body_tmpl {
-                            Some(b) => Some(render_template(b, &ctx)?),
-                            None => None,
-                        };
-
-                        do_request_with_client(
-                            &client,
-                            &url_str,
-                            &method,
-                            rendered_headers.as_ref(),
-                            rendered_body.as_ref(),
-                        )
-                        .await
-                    }
-                })
-                .buffer_unordered(10)
-                .collect()
-                .await;
+                    })
+                    .buffer_unordered(10)
+                    .collect()
+                    .await;
 
             // Collect results, propagating errors
             let mut output = Vec::with_capacity(results.len());

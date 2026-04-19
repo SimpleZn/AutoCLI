@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use aes::Aes128;
 use aes::Aes256;
 use base64::Engine;
-use cbc::cipher::{BlockDecryptMut, KeyIvInit, block_padding::Pkcs7};
+use cbc::cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
 use serde::Deserialize;
 
 use autocli_core::Cookie;
@@ -83,7 +83,11 @@ async fn fetch_and_decrypt(config: &CookieCloudConfig) -> Result<CcPayload, Stri
         .build()
         .map_err(|e| format!("HTTP client error: {e}"))?;
 
-    let url = format!("{}/get/{}", config.server_url.trim_end_matches('/'), config.uuid);
+    let url = format!(
+        "{}/get/{}",
+        config.server_url.trim_end_matches('/'),
+        config.uuid
+    );
     let resp = client
         .get(&url)
         .send()
@@ -99,7 +103,12 @@ async fn fetch_and_decrypt(config: &CookieCloudConfig) -> Result<CcPayload, Stri
         .await
         .map_err(|e| format!("Invalid CookieCloud response: {e}"))?;
 
-    let plaintext = decrypt(&cc.encrypted, &config.uuid, &config.password, cc.crypto_type.as_deref())?;
+    let plaintext = decrypt(
+        &cc.encrypted,
+        &config.uuid,
+        &config.password,
+        cc.crypto_type.as_deref(),
+    )?;
 
     serde_json::from_slice::<CcPayload>(&plaintext)
         .map_err(|e| format!("Failed to parse decrypted payload: {e}"))
@@ -136,7 +145,12 @@ fn raw_to_cookie(rc: &RawCookie) -> Cookie {
 
 // ── Decryption ────────────────────────────────────────────────────────────────
 
-fn decrypt(encrypted_b64: &str, uuid: &str, password: &str, crypto_type: Option<&str>) -> Result<Vec<u8>, String> {
+fn decrypt(
+    encrypted_b64: &str,
+    uuid: &str,
+    password: &str,
+    crypto_type: Option<&str>,
+) -> Result<Vec<u8>, String> {
     match crypto_type {
         Some("aes-128-cbc-fixed") | None => {
             // Try fixed-IV first (newer default); fall back to legacy on failure

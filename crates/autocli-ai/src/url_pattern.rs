@@ -52,7 +52,11 @@ fn clean_url_part(url: &str, lowercase_domain: bool) -> String {
         }
     };
 
-    let host = if lowercase_domain { host.to_lowercase() } else { host };
+    let host = if lowercase_domain {
+        host.to_lowercase()
+    } else {
+        host
+    };
 
     // Split path and query
     let (path, query) = match path_and_query.split_once('?') {
@@ -135,7 +139,10 @@ fn is_id_segment(segment: &str) -> bool {
     {
         // Heuristic: if it starts with an uppercase letter and has mostly uppercase letters,
         // it's likely a product/catalog code (ASIN, ISBN, etc.), not an ID
-        let starts_upper = segment.chars().next().map_or(false, |c| c.is_ascii_uppercase());
+        let starts_upper = segment
+            .chars()
+            .next()
+            .map_or(false, |c| c.is_ascii_uppercase());
         let upper_count = segment.chars().filter(|c| c.is_ascii_uppercase()).count();
         if starts_upper && upper_count > segment.len() / 3 && segment.len() <= 12 {
             return false;
@@ -316,7 +323,9 @@ mod tests {
     #[test]
     fn test_real_07_reddit() {
         assert_eq!(
-            url_to_pattern("https://www.reddit.com/r/programming/comments/abc123/some_post_title/?sort=top"),
+            url_to_pattern(
+                "https://www.reddit.com/r/programming/comments/abc123/some_post_title/?sort=top"
+            ),
             "https://www.reddit.com/r/programming/comments/abc123/some_post_title?sort"
         );
     }
@@ -324,7 +333,9 @@ mod tests {
     #[test]
     fn test_real_08_github_api() {
         assert_eq!(
-            url_to_pattern("https://api.github.com/repos/nashsu/autocli/stargazers?page=2&per_page=100"),
+            url_to_pattern(
+                "https://api.github.com/repos/nashsu/autocli/stargazers?page=2&per_page=100"
+            ),
             "https://api.github.com/repos/nashsu/autocli/stargazers?page&per_page"
         );
     }

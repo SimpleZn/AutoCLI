@@ -23,7 +23,10 @@ fn is_chinese_locale() -> bool {
             .args(["read", "-g", "AppleLocale"])
             .output()
         {
-            if String::from_utf8_lossy(&output.stdout).to_lowercase().starts_with("zh") {
+            if String::from_utf8_lossy(&output.stdout)
+                .to_lowercase()
+                .starts_with("zh")
+            {
                 return true;
             }
         }
@@ -34,7 +37,10 @@ fn is_chinese_locale() -> bool {
             .args(["-NoProfile", "-Command", "(Get-Culture).Name"])
             .output()
         {
-            if String::from_utf8_lossy(&output.stdout).to_lowercase().starts_with("zh") {
+            if String::from_utf8_lossy(&output.stdout)
+                .to_lowercase()
+                .starts_with("zh")
+            {
                 return true;
             }
         }
@@ -75,7 +81,8 @@ fn fix_evaluate_iife(yaml: &str) -> String {
                     continue;
                 }
                 // Also detect next pipeline step at same level as "- evaluate:"
-                if trimmed.starts_with("- ") && current_indent < eval_indent && !js_lines.is_empty() {
+                if trimmed.starts_with("- ") && current_indent < eval_indent && !js_lines.is_empty()
+                {
                     state = 2;
                     after.push(line);
                     continue;
@@ -93,9 +100,14 @@ fn fix_evaluate_iife(yaml: &str) -> String {
     }
 
     // Join all JS lines, strip the indent, and clean up
-    let js_code: String = js_lines.iter()
+    let js_code: String = js_lines
+        .iter()
         .map(|l| {
-            if l.len() > eval_indent { &l[eval_indent..] } else { l.trim() }
+            if l.len() > eval_indent {
+                &l[eval_indent..]
+            } else {
+                l.trim()
+            }
         })
         .collect::<Vec<&str>>()
         .join("\n");
@@ -275,10 +287,7 @@ fn fix_pipeline_yaml(yaml: &str) -> String {
 
 /// Capture all API data from a page for AI analysis.
 /// Installs fetch/XHR interceptors, navigates, scrolls, then collects everything.
-pub async fn capture_page_data(
-    page: &dyn IPage,
-    url: &str,
-) -> Result<Value, CliError> {
+pub async fn capture_page_data(page: &dyn IPage, url: &str) -> Result<Value, CliError> {
     info!(url = url, "Capturing page data for AI analysis");
 
     // Step 1: Navigate to page
@@ -286,11 +295,13 @@ pub async fn capture_page_data(
     page.wait_for_timeout(5000).await?;
 
     // Step 2: Scroll to trigger lazy loading
-    let _ = page.auto_scroll(Some(autocli_core::AutoScrollOptions {
-        max_scrolls: Some(3),
-        delay_ms: Some(1500),
-        ..Default::default()
-    })).await;
+    let _ = page
+        .auto_scroll(Some(autocli_core::AutoScrollOptions {
+            max_scrolls: Some(3),
+            delay_ms: Some(1500),
+            ..Default::default()
+        }))
+        .await;
 
     page.wait_for_timeout(2000).await?;
 
@@ -388,8 +399,16 @@ pub async fn capture_page_data(
     }
 
     debug!(
-        apis = data.get("intercepted").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0),
-        perf_urls = data.get("perf_urls").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0),
+        apis = data
+            .get("intercepted")
+            .and_then(|v| v.as_array())
+            .map(|a| a.len())
+            .unwrap_or(0),
+        perf_urls = data
+            .get("perf_urls")
+            .and_then(|v| v.as_array())
+            .map(|a| a.len())
+            .unwrap_or(0),
         "Page data captured"
     );
 
@@ -404,14 +423,28 @@ pub async fn generate_with_ai(
     token: &str,
 ) -> Result<(String, String, String), CliError> {
     // Step 1: Capture page data
-    eprintln!("{}", if is_chinese_locale() { "📡 正在采集页面数据..." } else { "📡 Capturing page data..." });
+    eprintln!(
+        "{}",
+        if is_chinese_locale() {
+            "📡 正在采集页面数据..."
+        } else {
+            "📡 Capturing page data..."
+        }
+    );
     let captured = capture_page_data(page, url).await?;
 
     // Step 2: Detect site name
     let site = detect_site_name(url);
 
     // Step 3: Send to LLM via server API
-    eprintln!("{}", if is_chinese_locale() { "🤖 正在发送至 AI 分析..." } else { "🤖 Sending to AI for analysis..." });
+    eprintln!(
+        "{}",
+        if is_chinese_locale() {
+            "🤖 正在发送至 AI 分析..."
+        } else {
+            "🤖 Sending to AI for analysis..."
+        }
+    );
     let yaml = generate_with_llm(token, &captured, goal, &site).await?;
 
     // Step 4: Force site and name fields to match our detected values
@@ -427,17 +460,20 @@ pub async fn generate_with_ai(
     fixed_yaml = fix_pipeline_yaml(&fixed_yaml);
 
     // Step 6: Inject page meta (title, description, keywords) into YAML header
-    let meta_title = captured.get("meta")
+    let meta_title = captured
+        .get("meta")
         .and_then(|m| m.get("title"))
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .trim();
-    let meta_description = captured.get("meta")
+    let meta_description = captured
+        .get("meta")
         .and_then(|m| m.get("description"))
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .trim();
-    let meta_keywords = captured.get("meta")
+    let meta_keywords = captured
+        .get("meta")
         .and_then(|m| m.get("keywords"))
         .and_then(|v| v.as_str())
         .unwrap_or("")
@@ -445,19 +481,33 @@ pub async fn generate_with_ai(
 
     let mut meta_lines = String::new();
     if !meta_title.is_empty() {
-        meta_lines.push_str(&format!("meta_title: \"{}\"\n", meta_title.replace('"', "\\\"")));
+        meta_lines.push_str(&format!(
+            "meta_title: \"{}\"\n",
+            meta_title.replace('"', "\\\"")
+        ));
     }
     if !meta_description.is_empty() {
-        meta_lines.push_str(&format!("meta_description: \"{}\"\n", meta_description.replace('"', "\\\"")));
+        meta_lines.push_str(&format!(
+            "meta_description: \"{}\"\n",
+            meta_description.replace('"', "\\\"")
+        ));
     }
     if !meta_keywords.is_empty() {
-        meta_lines.push_str(&format!("meta_keywords: \"{}\"\n", meta_keywords.replace('"', "\\\"")));
+        meta_lines.push_str(&format!(
+            "meta_keywords: \"{}\"\n",
+            meta_keywords.replace('"', "\\\"")
+        ));
     }
 
     if !meta_lines.is_empty() {
         // Insert after the "site:" line
         if let Some(pos) = fixed_yaml.find('\n') {
-            fixed_yaml = format!("{}\n{}{}", &fixed_yaml[..pos], meta_lines, &fixed_yaml[pos + 1..]);
+            fixed_yaml = format!(
+                "{}\n{}{}",
+                &fixed_yaml[..pos],
+                meta_lines,
+                &fixed_yaml[pos + 1..]
+            );
         }
     }
 
