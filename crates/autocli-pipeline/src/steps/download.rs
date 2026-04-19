@@ -324,7 +324,7 @@ async fn execute_article_download(
             "author": "-",
             "status": "failed",
             "size": format!("Write error: {}", e)
-        }]))
+        }])),
     }
 }
 
