@@ -29,8 +29,14 @@ impl BrowserBridge {
         Self::new(DEFAULT_PORT)
     }
 
-    /// Connect to the daemon, starting it if necessary, and return a page.
+    /// Connect to the daemon, starting it if necessary, and return a trait-object page.
     pub async fn connect(&mut self) -> Result<Arc<dyn IPage>, CliError> {
+        Ok(self.connect_daemon_page().await?)
+    }
+
+    /// Connect and return the concrete `DaemonPage` so callers can use
+    /// daemon-specific methods (e.g. `read_article`) not on the `IPage` trait.
+    pub async fn connect_daemon_page(&mut self) -> Result<Arc<DaemonPage>, CliError> {
         let client = Arc::new(DaemonClient::new(self.port));
 
         // Step 1: Check Chrome is running
